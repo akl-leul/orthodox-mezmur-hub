@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, Users, Music, FileText, Bell } from "lucide-react";
 import { toast } from "sonner";
+import MezmurManagement from "@/components/admin/MezmurManagement";
+import PostManagement from "@/components/admin/PostManagement";
+import UserManagement from "@/components/admin/UserManagement";
+import AnnouncementManagement from "@/components/admin/AnnouncementManagement";
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -19,11 +29,13 @@ const Admin = () => {
 
   useEffect(() => {
     checkAdminAccess();
-  }, []);
+  }, [checkAdminAccess]);
 
   const checkAdminAccess = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
         navigate("/auth");
         return;
@@ -54,12 +66,17 @@ const Admin = () => {
 
   const fetchStats = async () => {
     try {
-      const [usersRes, mezmursRes, postsRes, announcementsRes] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("mezmurs").select("id", { count: "exact", head: true }),
-        supabase.from("posts").select("id", { count: "exact", head: true }),
-        supabase.from("announcements").select("id", { count: "exact", head: true }),
-      ]);
+      const [usersRes, mezmursRes, postsRes, announcementsRes] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true }),
+          supabase.from("mezmurs").select("id", { count: "exact", head: true }),
+          supabase.from("posts").select("id", { count: "exact", head: true }),
+          supabase
+            .from("announcements")
+            .select("id", { count: "exact", head: true }),
+        ]);
 
       setStats({
         users: usersRes.count || 0,
@@ -137,7 +154,8 @@ const Admin = () => {
         <CardHeader>
           <CardTitle>Content Management</CardTitle>
           <CardDescription>
-            Manage all app content including mezmurs, posts, users, and announcements
+            Manage all app content including mezmurs, posts, users, and
+            announcements
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,16 +167,18 @@ const Admin = () => {
               <TabsTrigger value="announcements">Announcements</TabsTrigger>
             </TabsList>
             <TabsContent value="mezmurs" className="py-4">
-              <p className="text-muted-foreground">Mezmur management coming soon...</p>
+              <MezmurManagement />
             </TabsContent>
             <TabsContent value="posts" className="py-4">
-              <p className="text-muted-foreground">Post management coming soon...</p>
+              <PostManagement />
             </TabsContent>
             <TabsContent value="users" className="py-4">
-              <p className="text-muted-foreground">User management coming soon...</p>
+              <p className="text-muted-foreground">
+                User management coming soon...
+              </p>
             </TabsContent>
             <TabsContent value="announcements" className="py-4">
-              <p className="text-muted-foreground">Announcement management coming soon...</p>
+              <AnnouncementManagement />
             </TabsContent>
           </Tabs>
         </CardContent>
