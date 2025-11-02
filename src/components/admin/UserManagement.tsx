@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -19,14 +19,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Pencil, Trash2 } from "lucide-react";
 
 interface UserProfile {
   id: string;
-  username: string;
-  email: string; // Assuming email is stored or can be fetched
-  role: string;
+  full_name: string; // Changed from username
+  email: string;
+  role: "user" | "admin"; // Explicitly define possible roles
   created_at: string;
 }
 
@@ -34,42 +40,55 @@ const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<Partial<UserProfile> | null>(null);
+  const [currentUser, setCurrentUser] = useState<Partial<UserProfile> | null>(
+    null,
+  );
   const [filter, setFilter] = useState("");
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     // Fetch profiles and their associated roles
     const { data, error } = await supabase
       .from("profiles")
-      .select(`
+      .select(
+        `
         id,
-        username,
+        full_name, // Changed from username
         email,
         created_at,
         user_roles ( role )
-      `)
+      `,
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
       toast.error("Failed to fetch users.");
       console.error("Error fetching users:", error);
     } else {
-      const usersWithRoles: UserProfile[] = data.map((profile: any) => ({
-        id: profile.id,
-        username: profile.username,
-        email: profile.email,
-        created_at: profile.created_at,
-        role: profile.user_roles.length > 0 ? profile.user_roles[0].role : "user", // Default to 'user' if no role found
-      }));
+      const usersWithRoles: UserProfile[] = data.map(
+        (profile: {
+          id: string;
+          full_name: string; // Changed from username
+          email: string;
+          created_at: string;
+          user_roles: Array<{ role: "user" | "admin" }>;
+        }) => ({
+          id: profile.id,
+          full_name: profile.full_name, // Changed from username
+          email: profile.email,
+          created_at: profile.created_at,
+          role:
+            profile.user_roles.length > 0 ? profile.user_roles[0].role : "user", // Default to 'user' if no role found
+        }),
+      );
       setUsers(usersWithRoles);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const handleEditClick = (user: UserProfile) => {
     setCurrentUser(user);
@@ -77,42 +96,58 @@ const UserManagement: React.FC = () => {
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this user? This action cannot be undone.",
+      )
+    )
+      return;
 
     try {
-      // First, delete from user_roles table
-      const { error: roleError } = await supabase.from("user_roles").delete().eq("user_id", id);
+      // Delete from user_roles table first
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", id);
       if (roleError) throw roleError;
 
       // Then, delete from profiles table
-      const { error: profileError } = await supabase.from("profiles").delete().eq("id", id);
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", id);
       if (profileError) throw profileError;
 
-      // Finally, attempt to delete the user from auth.users (requires service role key or RLS)
-      // Note: Direct deletion from auth.users via client-side is generally not allowed without a service role key.
-      // For a client-side admin panel, you'd typically rely on RLS to prevent unauthorized deletions or
-      // have a backend function that performs this secure deletion.
-      // For this example, we'll assume RLS on profiles and user_roles is sufficient for client-side control.
-      // If full auth.users deletion is needed, it would be a separate, more privileged operation.
+      // Note: Deleting from `auth.users` directly from the client is generally not recommended
+      // and requires a service role key or a secure backend function.
+      // For a client-side admin panel, we assume RLS is set up to handle cascading deletes
+      // or that the Supabase setup implies profile/role deletion is sufficient.
+      // If full auth.users deletion is required, it should be done via a secure server-side call.
+
       toast.success("User deleted successfully (profile and roles).");
       fetchUsers();
-    } catch (error: any) {
-      toast.error("Failed to delete user: " + error.message);
-      console.error("Error deleting user:", error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error("Failed to delete user: " + error.message);
+        console.error("Error deleting user:", error);
+      } else {
+        toast.error("Failed to delete user: An unknown error occurred.");
+        console.error("Unknown error deleting user:", error);
+      }
     }
   };
 
   const handleSaveUser = async () => {
-    if (!currentUser?.id || !currentUser?.username || !currentUser?.role) {
+    if (!currentUser?.id || !currentUser?.full_name || !currentUser?.role) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
     try {
-      // Update username in profiles table
+      // Update full_name in profiles table
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ username: currentUser.username })
+        .update({ full_name: currentUser.full_name }) // Changed from username
         .eq("id", currentUser.id);
 
       if (profileError) throw profileError;
@@ -122,7 +157,7 @@ const UserManagement: React.FC = () => {
         .from("user_roles")
         .upsert(
           { user_id: currentUser.id, role: currentUser.role },
-          { onConflict: "user_id" }
+          { onConflict: "user_id" },
         );
 
       if (roleError) throw roleError;
@@ -130,16 +165,22 @@ const UserManagement: React.FC = () => {
       toast.success("User updated successfully.");
       setIsDialogOpen(false);
       fetchUsers();
-    } catch (error: any) {
-      toast.error("Failed to update user: " + error.message);
-      console.error("Error updating user:", error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error("Failed to update user: " + error.message);
+        console.error("Error updating user:", error);
+      } else {
+        toast.error("Failed to update user: An unknown error occurred.");
+        console.error("Unknown error updating user:", error);
+      }
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.username.toLowerCase().includes(filter.toLowerCase()) ||
-    user.email.toLowerCase().includes(filter.toLowerCase()) ||
-    user.role.toLowerCase().includes(filter.toLowerCase())
+  const filteredUsers = users.filter(
+    (user) =>
+      user.full_name.toLowerCase().includes(filter.toLowerCase()) || // Changed from username
+      user.email.toLowerCase().includes(filter.toLowerCase()) ||
+      user.role.toLowerCase().includes(filter.toLowerCase()),
   );
 
   if (loading) {
@@ -161,7 +202,7 @@ const UserManagement: React.FC = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Username</TableHead>
+            <TableHead>Full Name</TableHead> {/* Changed from Username */}
             <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Actions</TableHead>
@@ -170,15 +211,24 @@ const UserManagement: React.FC = () => {
         <TableBody>
           {filteredUsers.map((user) => (
             <TableRow key={user.id}>
-              <TableCell className="font-medium">{user.username}</TableCell>
+              <TableCell className="font-medium">{user.full_name}</TableCell>{" "}
+              {/* Changed from username */}
               <TableCell>{user.email}</TableCell>
               <TableCell>{user.role}</TableCell>
               <TableCell>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEditClick(user)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditClick(user)}
+                  >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(user.id)}>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteClick(user.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -191,17 +241,23 @@ const UserManagement: React.FC = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{currentUser?.id ? "Edit User" : "Add New User"}</DialogTitle>
+            <DialogTitle>
+              {currentUser?.id ? "Edit User" : "Add New User"}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                Username
+              <Label htmlFor="full_name" className="text-right">
+                {" "}
+                {/* Changed from username */}
+                Full Name
               </Label>
               <Input
-                id="username"
-                value={currentUser?.username || ""}
-                onChange={(e) => setCurrentUser({ ...currentUser, username: e.target.value })}
+                id="full_name" // Changed from username
+                value={currentUser?.full_name || ""} // Changed from username
+                onChange={(e) =>
+                  setCurrentUser({ ...currentUser, full_name: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
@@ -212,7 +268,7 @@ const UserManagement: React.FC = () => {
               <Input
                 id="email"
                 value={currentUser?.email || ""}
-                readOnly // Email is often not directly editable via admin panel once set
+                readOnly
                 className="col-span-3"
               />
             </div>
@@ -222,7 +278,12 @@ const UserManagement: React.FC = () => {
               </Label>
               <Select
                 value={currentUser?.role || ""}
-                onValueChange={(value) => setCurrentUser({ ...currentUser, role: value })}
+                onValueChange={(value) =>
+                  setCurrentUser({
+                    ...currentUser,
+                    role: value as "user" | "admin",
+                  })
+                }
               >
                 <SelectTrigger id="role" className="col-span-3">
                   <SelectValue placeholder="Select a role" />
@@ -238,9 +299,7 @@ const UserManagement: React.FC = () => {
             <Button onClick={() => setIsDialogOpen(false)} variant="outline">
               Cancel
             </Button>
-            <Button onClick={handleSaveUser}>
-              Save Changes
-            </Button>
+            <Button onClick={handleSaveUser}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

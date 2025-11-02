@@ -128,7 +128,7 @@ const Admin = () => {
         <Card className="shadow-gold">
           <CardHeader>
             <div className="flex items-center justify-between">
-              \<CardDescription>Posts</CardDescription>
+              <CardDescription>Posts</CardDescription>
               <FileText className="h-5 w-5 text-secondary" />
             </div>
           </CardHeader>
