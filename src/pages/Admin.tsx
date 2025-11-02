@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -27,11 +27,32 @@ const Admin = () => {
     announcements: 0,
   });
 
-  useEffect(() => {
-    checkAdminAccess();
-  }, [checkAdminAccess]);
+  const fetchStats = useCallback(async () => {
+    try {
+      const [usersRes, mezmursRes, postsRes, announcementsRes] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true }),
+          supabase.from("mezmurs").select("id", { count: "exact", head: true }),
+          supabase.from("posts").select("id", { count: "exact", head: true }),
+          supabase
+            .from("announcements")
+            .select("id", { count: "exact", head: true }),
+        ]);
 
-  const checkAdminAccess = async () => {
+      setStats({
+        users: usersRes.count || 0,
+        mezmurs: mezmursRes.count || 0,
+        posts: postsRes.count || 0,
+        announcements: announcementsRes.count || 0,
+      });
+    } catch (error) {
+      toast.error("Failed to load statistics");
+    }
+  }, []); // Empty dependency array means this function is created once
+
+  const checkAdminAccess = useCallback(async () => {
     try {
       const {
         data: { session },
@@ -62,32 +83,11 @@ const Admin = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate, fetchStats]); // `navigate` and `fetchStats` are dependencies
 
-  const fetchStats = async () => {
-    try {
-      const [usersRes, mezmursRes, postsRes, announcementsRes] =
-        await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id", { count: "exact", head: true }),
-          supabase.from("mezmurs").select("id", { count: "exact", head: true }),
-          supabase.from("posts").select("id", { count: "exact", head: true }),
-          supabase
-            .from("announcements")
-            .select("id", { count: "exact", head: true }),
-        ]);
-
-      setStats({
-        users: usersRes.count || 0,
-        mezmurs: mezmursRes.count || 0,
-        posts: postsRes.count || 0,
-        announcements: announcementsRes.count || 0,
-      });
-    } catch (error) {
-      toast.error("Failed to load statistics");
-    }
-  };
+  useEffect(() => {
+    checkAdminAccess();
+  }, [checkAdminAccess]); // `checkAdminAccess` is a dependency
 
   if (loading || !isAdmin) {
     return <div className="container mx-auto py-8 px-4">Loading...</div>;
@@ -128,7 +128,7 @@ const Admin = () => {
         <Card className="shadow-gold">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardDescription>Posts</CardDescription>
+              \<CardDescription>Posts</CardDescription>
               <FileText className="h-5 w-5 text-secondary" />
             </div>
           </CardHeader>
@@ -173,9 +173,7 @@ const Admin = () => {
               <PostManagement />
             </TabsContent>
             <TabsContent value="users" className="py-4">
-              <p className="text-muted-foreground">
-                User management coming soon...
-              </p>
+              <UserManagement />
             </TabsContent>
             <TabsContent value="announcements" className="py-4">
               <AnnouncementManagement />
