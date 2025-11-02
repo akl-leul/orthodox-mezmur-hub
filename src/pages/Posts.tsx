@@ -21,6 +21,14 @@ interface Post {
   comments: { id: string }[];
 }
 
+interface Comment {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  profiles: { name: string; profile_pic: string | null } | null;
+}
+
 const Posts = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +37,8 @@ const Posts = () => {
   const [newPost, setNewPost] = useState({ title: "", content: "" });
   const [selectedPost, setSelectedPost] = useState<string | null>(null);
   const [newComment, setNewComment] = useState("");
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -103,6 +113,65 @@ const Posts = () => {
       fetchPosts();
     } catch (error: any) {
       toast.error("Failed to update like");
+    }
+  };
+
+  const fetchComments = async (postId: string) => {
+    setLoadingComments(true);
+    try {
+      const { data, error } = await supabase
+        .from("comments")
+        .select(`
+          *,
+          profiles(name, profile_pic)
+        `)
+        .eq("post_id", postId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setComments(data || []);
+    } catch (error: any) {
+      toast.error("Failed to load comments");
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleCommentToggle = (postId: string) => {
+    if (selectedPost === postId) {
+      setSelectedPost(null);
+      setComments([]);
+    } else {
+      setSelectedPost(postId);
+      fetchComments(postId);
+    }
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!session) {
+      toast.error("Please sign in to comment");
+      return;
+    }
+
+    if (!newComment.trim()) {
+      toast.error("Comment cannot be empty");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("comments").insert({
+        post_id: postId,
+        user_id: session.user.id,
+        content: newComment.trim(),
+      });
+
+      if (error) throw error;
+      toast.success("Comment added!");
+      setNewComment("");
+      fetchComments(postId);
+      fetchPosts();
+    } catch (error: any) {
+      toast.error("Failed to add comment");
     }
   };
 
@@ -194,13 +263,69 @@ const Posts = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSelectedPost(selectedPost === post.id ? null : post.id)}
+                    onClick={() => handleCommentToggle(post.id)}
                     className="gap-2"
                   >
                     <MessageCircle className="h-4 w-4" />
                     {post.comments.length}
                   </Button>
                 </div>
+
+                {selectedPost === post.id && (
+                  <div className="mt-4 space-y-4 pt-4 border-t">
+                    <h4 className="font-semibold">Comments</h4>
+                    
+                    {session && (
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Write a comment..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          rows={2}
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={() => handleAddComment(post.id)}
+                          size="sm"
+                          className="self-end"
+                        >
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+
+                    {loadingComments ? (
+                      <p className="text-sm text-muted-foreground">Loading comments...</p>
+                    ) : comments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No comments yet. Be the first to comment!
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {comments.map((comment) => (
+                          <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <MessageCircle className="h-4 w-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  {comment.profiles?.name || "Anonymous"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(comment.created_at), {
+                                    addSuffix: true,
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-sm">{comment.content}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
