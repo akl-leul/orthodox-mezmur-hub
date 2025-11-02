@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AudioPlayerProvider } from "@/contexts/GlobalAudioPlayerContext";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
@@ -20,21 +21,25 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/mezmurs" element={<Mezmurs />} />
-            <Route path="/posts" element={<Posts />} />
-            <Route path="/announcements" element={<Announcements />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/admin" element={<Admin />} />
-          </Route>
-          <Route path="/auth" element={<Auth />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AudioPlayerProvider>
+        {" "}
+        {/* Wrap the BrowserRouter with AudioPlayerProvider */}
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/mezmurs" element={<Mezmurs />} />
+              <Route path="/posts" element={<Posts />} />
+              <Route path="/announcements" element={<Announcements />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<Admin />} />
+            </Route>
+            <Route path="/auth" element={<Auth />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AudioPlayerProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

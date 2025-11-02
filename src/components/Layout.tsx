@@ -2,9 +2,18 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Home, Music, FileText, Bell, User, LogOut, Settings, Cross } from "lucide-react";
+import {
+  Home,
+  Music,
+  FileText,
+  Bell,
+  User,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Session } from "@supabase/supabase-js";
+import GlobalAudioPlayer from "@/components/GlobalAudioPlayer"; // Import the GlobalAudioPlayer
 
 const Layout = () => {
   const location = useLocation();
@@ -13,7 +22,9 @@ const Layout = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       checkAdmin(session?.user?.id);
     });
@@ -64,7 +75,7 @@ const Layout = () => {
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 shadow-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center gap-2 font-bold text-xl">
-            <Cross className="h-6 w-6 text-primary" />
+            <Music className="h-6 w-6 text-primary" />
             <span className="gradient-primary bg-clip-text text-transparent">
               Orthodox Mezmur Hub
             </span>
@@ -106,6 +117,7 @@ const Layout = () => {
         <Outlet />
       </main>
 
+      {/* Mobile Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-card shadow-elegant z-50">
         <div className="flex justify-around items-center h-16">
           {navItems.slice(0, 5).map((item) => {
@@ -117,7 +129,7 @@ const Layout = () => {
                 to={item.path}
                 className={cn(
                   "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-smooth",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -127,6 +139,9 @@ const Layout = () => {
           })}
         </div>
       </nav>
+
+      {/* Global Audio Player */}
+      <GlobalAudioPlayer />
     </div>
   );
 };

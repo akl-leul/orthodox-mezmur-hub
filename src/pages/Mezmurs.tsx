@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAudioPlayer } from "@/contexts/GlobalAudioPlayerContext";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Music, Play, Download, Search } from "lucide-react";
+import { Music, Play, Download, Search, Pause } from "lucide-react";
 import { toast } from "sonner";
 
 interface Mezmur {
@@ -22,6 +29,12 @@ const Mezmurs = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMezmur, setSelectedMezmur] = useState<Mezmur | null>(null);
+  const {
+    currentMezmur: globalCurrentMezmur,
+    isPlaying: globalIsPlaying,
+    playMezmur,
+    pauseMezmur,
+  } = useAudioPlayer();
 
   useEffect(() => {
     fetchMezmurs();
@@ -32,7 +45,7 @@ const Mezmurs = () => {
       const filtered = mezmurs.filter(
         (mezmur) =>
           mezmur.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          mezmur.artist.toLowerCase().includes(searchQuery.toLowerCase())
+          mezmur.artist.toLowerCase().includes(searchQuery.toLowerCase()),
       );
       setFilteredMezmurs(filtered);
     } else {
@@ -56,6 +69,41 @@ const Mezmurs = () => {
       setLoading(false);
     }
   };
+
+  const handlePlayToggle = (mezmur: Mezmur) => {
+    if (globalCurrentMezmur?.id === mezmur.id && globalIsPlaying) {
+      pauseMezmur();
+    } else {
+      playMezmur(mezmur);
+    }
+  };
+
+  const handleDownload = (e: React.MouseEvent, mezmur: Mezmur) => {
+    e.stopPropagation(); // Prevent card onClick from firing
+    if (mezmur.audio_url) {
+      const link = document.createElement("a");
+      link.href = mezmur.audio_url;
+      const url = new URL(mezmur.audio_url);
+      const pathSegments = url.pathname.split("/");
+      const filenameWithExtension = pathSegments[pathSegments.length - 1];
+      const parts = filenameWithExtension.split(".");
+      const extension =
+        parts.length > 1 && parts.pop() !== "" ? parts.pop() : "mp3";
+
+      link.setAttribute(
+        "download",
+        `${mezmur.title} - ${mezmur.artist}.${extension}`,
+      ); // Suggest a filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(`Downloading ${mezmur.title}...`);
+    } else {
+      toast.error("No audio URL available for download.");
+    }
+  };
+
+  // Removed local useEffect for audio cleanup, now handled by GlobalAudioPlayerContext
 
   if (loading) {
     return (
@@ -112,12 +160,30 @@ const Mezmurs = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  <Button size="sm" className="flex-1 gap-2">
-                    <Play className="h-4 w-4" />
-                    Play
+                  <Button
+                    size="sm"
+                    className="flex-1 gap-2"
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent card onClick from firing
+                      handlePlayToggle(mezmur);
+                    }}
+                  >
+                    {globalCurrentMezmur?.id === mezmur.id &&
+                    globalIsPlaying ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                    {globalCurrentMezmur?.id === mezmur.id && globalIsPlaying
+                      ? "Pause"
+                      : "Play"}
                   </Button>
                   {mezmur.downloadable && (
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => handleDownload(e, mezmur)}
+                    >
                       <Download className="h-4 w-4" />
                     </Button>
                   )}
@@ -138,7 +204,9 @@ const Mezmurs = () => {
             {selectedMezmur.lyrics ? (
               <div className="whitespace-pre-wrap">{selectedMezmur.lyrics}</div>
             ) : (
-              <p className="text-muted-foreground">Lyrics not available for this Mezmur</p>
+              <p className="text-muted-foreground">
+                Lyrics not available for this Mezmur
+              </p>
             )}
           </CardContent>
         </Card>

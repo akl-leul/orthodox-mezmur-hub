@@ -4,9 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, Cross } from "lucide-react";
+import { Loader2, Music } from "lucide-react";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -17,7 +23,9 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         navigate("/");
       }
@@ -68,11 +76,13 @@ const Auth = () => {
       <Card className="w-full max-w-md shadow-elegant">
         <CardHeader className="text-center">
           <div className="mb-4 flex justify-center">
-            <Cross className="h-16 w-16 text-primary" />
+            <Music className="h-16 w-16 text-primary" />
           </div>
           <CardTitle className="text-3xl">Orthodox Mezmur Hub</CardTitle>
           <CardDescription>
-            {isLogin ? "Welcome back! Sign in to continue" : "Create your account to get started"}
+            {isLogin
+              ? "Welcome back! Sign in to continue"
+              : "Create your account to get started"}
           </CardDescription>
         </CardHeader>
         <CardContent>

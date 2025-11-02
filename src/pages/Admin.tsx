@@ -47,8 +47,9 @@ const Admin = () => {
         posts: postsRes.count || 0,
         announcements: announcementsRes.count || 0,
       });
-    } catch (error) {
+    } catch (error: any) {
       toast.error("Failed to load statistics");
+      console.error("Error fetching admin statistics:", error.message || error);
     }
   }, []); // Empty dependency array means this function is created once
 

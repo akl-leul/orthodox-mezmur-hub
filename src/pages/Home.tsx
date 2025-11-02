@@ -1,7 +1,13 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Music, FileText, Bell, Cross, Play } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Music, FileText, Bell, Play } from "lucide-react";
 
 const Home = () => {
   return (
@@ -9,13 +15,13 @@ const Home = () => {
       {/* Hero Section */}
       <section className="gradient-hero text-primary-foreground py-20 px-4">
         <div className="container mx-auto text-center">
-          <Cross className="h-20 w-20 mx-auto mb-6 animate-pulse" />
+          <Music className="h-20 w-20 mx-auto mb-6 animate-pulse" />
           <h1 className="text-4xl md:text-6xl font-bold mb-4">
             Orthodox Mezmur Hub
           </h1>
           <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90">
-            Experience the beauty of Ethiopian Orthodox spiritual music. Listen to Mezmurs, 
-            read lyrics, and connect with a community of believers.
+            Experience the beauty of Ethiopian Orthodox spiritual music. Listen
+            to Mezmurs, read lyrics, and connect with a community of believers.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/mezmurs">
@@ -25,8 +31,8 @@ const Home = () => {
               </Button>
             </Link>
             <Link to="/posts">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="bg-background/20 hover:bg-background/30 text-primary-foreground border-2 border-primary-foreground/30"
               >
                 Read Blog
@@ -39,7 +45,9 @@ const Home = () => {
       {/* Features Section */}
       <section className="py-16 px-4">
         <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">What We Offer</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">
+            What We Offer
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="shadow-gold hover:shadow-elegant transition-smooth">
               <CardHeader>
@@ -48,7 +56,8 @@ const Home = () => {
                 </div>
                 <CardTitle>Ethiopian Mezmurs</CardTitle>
                 <CardDescription>
-                  Stream and download beautiful Orthodox Mezmurs with full lyrics
+                  Stream and download beautiful Orthodox Mezmurs with full
+                  lyrics
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -67,7 +76,8 @@ const Home = () => {
                 </div>
                 <CardTitle>Blog & News</CardTitle>
                 <CardDescription>
-                  Read spiritual insights, news, and share your thoughts with the community
+                  Read spiritual insights, news, and share your thoughts with
+                  the community
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -86,7 +96,8 @@ const Home = () => {
                 </div>
                 <CardTitle>Announcements</CardTitle>
                 <CardDescription>
-                  Stay updated with the latest church news and important announcements
+                  Stay updated with the latest church news and important
+                  announcements
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -104,16 +115,14 @@ const Home = () => {
       {/* CTA Section */}
       <section className="bg-muted py-16 px-4">
         <div className="container mx-auto text-center">
-          <Cross className="h-16 w-16 mx-auto mb-6 text-primary" />
+          <Music className="h-16 w-16 mx-auto mb-6 text-primary" />
           <h2 className="text-3xl font-bold mb-4">Join Our Community</h2>
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Create an account to like, comment, and contribute to our growing collection 
-            of Ethiopian Orthodox spiritual content.
+            Create an account to like, comment, and contribute to our growing
+            collection of Ethiopian Orthodox spiritual content.
           </p>
           <Link to="/auth">
-            <Button size="lg">
-              Get Started
-            </Button>
+            <Button size="lg">Get Started</Button>
           </Link>
         </div>
       </section>

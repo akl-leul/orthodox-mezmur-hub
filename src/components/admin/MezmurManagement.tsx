@@ -10,7 +10,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
@@ -20,7 +26,7 @@ interface Mezmur {
   title: string;
   artist: string;
   audio_url: string;
-  lyrics: string;
+  lyrics: string | null;
   created_at: string;
 }
 
@@ -28,7 +34,9 @@ const MezmurManagement: React.FC = () => {
   const [mezmurs, setMezmurs] = useState<Mezmur[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [currentMezmur, setCurrentMezmur] = useState<Partial<Mezmur> | null>(null);
+  const [currentMezmur, setCurrentMezmur] = useState<Partial<Mezmur> | null>(
+    null,
+  );
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -37,7 +45,10 @@ const MezmurManagement: React.FC = () => {
 
   const fetchMezmurs = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("mezmurs").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("mezmurs")
+      .select("*")
+      .order("created_at", { ascending: false });
     if (error) {
       toast.error("Failed to fetch mezmurs.");
       console.error("Error fetching mezmurs:", error);
@@ -76,8 +87,14 @@ const MezmurManagement: React.FC = () => {
   };
 
   const handleSaveMezmur = async () => {
-    if (!currentMezmur?.title || !currentMezmur?.artist || !currentMezmur?.audio_url || !currentMezmur?.lyrics) {
-      toast.error("Please fill in all required fields.");
+    if (
+      !currentMezmur?.title ||
+      !currentMezmur?.artist ||
+      !currentMezmur?.audio_url
+    ) {
+      toast.error(
+        "Please fill in all required fields (Title, Artist, Audio URL).",
+      );
       return;
     }
 
@@ -123,9 +140,10 @@ const MezmurManagement: React.FC = () => {
     }
   };
 
-  const filteredMezmurs = mezmurs.filter(mezmur =>
-    mezmur.title.toLowerCase().includes(filter.toLowerCase()) ||
-    mezmur.artist.toLowerCase().includes(filter.toLowerCase())
+  const filteredMezmurs = mezmurs.filter(
+    (mezmur) =>
+      mezmur.title.toLowerCase().includes(filter.toLowerCase()) ||
+      mezmur.artist.toLowerCase().includes(filter.toLowerCase()),
   );
 
   if (loading) {
@@ -160,13 +178,23 @@ const MezmurManagement: React.FC = () => {
             <TableRow key={mezmur.id}>
               <TableCell className="font-medium">{mezmur.title}</TableCell>
               <TableCell>{mezmur.artist}</TableCell>
-              <TableCell className="max-w-[200px] truncate">{mezmur.audio_url}</TableCell>
+              <TableCell className="max-w-[200px] truncate">
+                {mezmur.audio_url}
+              </TableCell>
               <TableCell>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleEditClick(mezmur)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditClick(mezmur)}
+                  >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(mezmur.id)}>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDeleteClick(mezmur.id)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -179,7 +207,9 @@ const MezmurManagement: React.FC = () => {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{currentMezmur?.id ? "Edit Mezmur" : "Add New Mezmur"}</DialogTitle>
+            <DialogTitle>
+              {currentMezmur?.id ? "Edit Mezmur" : "Add New Mezmur"}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -189,7 +219,9 @@ const MezmurManagement: React.FC = () => {
               <Input
                 id="title"
                 value={currentMezmur?.title || ""}
-                onChange={(e) => setCurrentMezmur({ ...currentMezmur, title: e.target.value })}
+                onChange={(e) =>
+                  setCurrentMezmur({ ...currentMezmur, title: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
@@ -200,7 +232,9 @@ const MezmurManagement: React.FC = () => {
               <Input
                 id="artist"
                 value={currentMezmur?.artist || ""}
-                onChange={(e) => setCurrentMezmur({ ...currentMezmur, artist: e.target.value })}
+                onChange={(e) =>
+                  setCurrentMezmur({ ...currentMezmur, artist: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
@@ -211,7 +245,12 @@ const MezmurManagement: React.FC = () => {
               <Input
                 id="audio_url"
                 value={currentMezmur?.audio_url || ""}
-                onChange={(e) => setCurrentMezmur({ ...currentMezmur, audio_url: e.target.value })}
+                onChange={(e) =>
+                  setCurrentMezmur({
+                    ...currentMezmur,
+                    audio_url: e.target.value,
+                  })
+                }
                 className="col-span-3"
               />
             </div>
@@ -222,7 +261,9 @@ const MezmurManagement: React.FC = () => {
               <Input
                 id="lyrics"
                 value={currentMezmur?.lyrics || ""}
-                onChange={(e) => setCurrentMezmur({ ...currentMezmur, lyrics: e.target.value })}
+                onChange={(e) =>
+                  setCurrentMezmur({ ...currentMezmur, lyrics: e.target.value })
+                }
                 className="col-span-3"
               />
             </div>
@@ -231,9 +272,7 @@ const MezmurManagement: React.FC = () => {
             <Button onClick={() => setIsDialogOpen(false)} variant="outline">
               Cancel
             </Button>
-            <Button onClick={handleSaveMezmur}>
-              Save Changes
-            </Button>
+            <Button onClick={handleSaveMezmur}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
