@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const PLAYER_POSITION_KEY = "audio_player_position";
+const DESKTOP_BREAKPOINT = 768; // Corresponds to Tailwind's 'md' breakpoint
 
 const GlobalAudioPlayer: React.FC = () => {
   const {
@@ -39,21 +40,49 @@ const GlobalAudioPlayer: React.FC = () => {
 
   const playerRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedPosition = localStorage.getItem(PLAYER_POSITION_KEY);
-      if (savedPosition) {
+    if (typeof window === "undefined") {
+      // Return a default for SSR, actual position will be calculated on client mount
+      return { x: 0, y: 0 };
+    }
+
+    const savedPosition = localStorage.getItem(PLAYER_POSITION_KEY);
+    if (savedPosition) {
+      try {
         return JSON.parse(savedPosition);
+      } catch (e) {
+        console.error("Failed to parse saved player position:", e);
+        // Fallback to default if parsing fails
       }
     }
     // Default position for desktop (bottom-right), adjusted for player width/height
     // These values are rough estimates; actual position will be constrained by viewport
+    // Considering the player width is md:w-[320px] and height around 180px
     return {
-      x: window.innerWidth - 320 - 16,
-      y: window.innerHeight - 180 - 16,
+      x: window.innerWidth - 320 - 16, // 320px width + 16px right padding
+      y: window.innerHeight - 180 - 16, // 180px est. height + 16px bottom padding
     };
   });
   const [isDragging, setIsDragging] = useState(false);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDesktop, setIsDesktop] = useState(false); // New state to track desktop view
+
+  // Effect to update isDesktop state on mount and resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
+    };
+
+    if (typeof window !== "undefined") {
+      handleResize(); // Set initial value
+      window.addEventListener("resize", handleResize);
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("resize", handleResize);
+      }
+    };
+  }, []);
 
   const formatTime = (seconds: number) => {
     if (isNaN(seconds) || seconds === Infinity) return "0:00";
@@ -103,11 +132,11 @@ const GlobalAudioPlayer: React.FC = () => {
   // Dragging logic
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      // Only allow dragging from the top part of the player or a dedicated handle
+      // Only allow dragging from the dedicated handle and only on desktop
       const target = e.target as HTMLElement;
       const isHandle = target.closest(".draggable-handle");
 
-      if (playerRef.current && isHandle) {
+      if (isDesktop && playerRef.current && isHandle) {
         setIsDragging(true);
         const rect = playerRef.current.getBoundingClientRect();
         setOffset({
@@ -117,8 +146,8 @@ const GlobalAudioPlayer: React.FC = () => {
         e.preventDefault(); // Prevent text selection etc.
       }
     },
-    [playerRef],
-  ); // Add playerRef to dependencies
+    [playerRef, isDesktop],
+  );
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -136,24 +165,33 @@ const GlobalAudioPlayer: React.FC = () => {
 
       setPosition({ x: newX, y: newY });
     },
-    [isDragging, offset, playerRef], // Add playerRef to dependencies
+    [isDragging, offset, playerRef],
   );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
-    localStorage.setItem(PLAYER_POSITION_KEY, JSON.stringify(position));
-  }, [position]);
+    if (isDesktop) {
+      // Only save position if on desktop
+      localStorage.setItem(PLAYER_POSITION_KEY, JSON.stringify(position));
+    }
+  }, [position, isDesktop]);
 
   useEffect(() => {
     // Attach and clean up global mouse event listeners
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
+    if (isDesktop) {
+      // Only attach listeners on desktop
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
+      if (isDesktop) {
+        // Only remove listeners if they were attached
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      }
     };
-  }, [handleMouseMove, handleMouseUp]);
+  }, [handleMouseMove, handleMouseUp, isDesktop]);
 
   const handleRemove = () => {
     setCurrentMezmur(null);
@@ -168,14 +206,18 @@ const GlobalAudioPlayer: React.FC = () => {
       ref={playerRef}
       className={cn(
         "z-50 flex flex-col rounded-b-lg shadow-lg w-full bg-background transition-all duration-300",
+        // Base styles for mobile (fixed at top, full width)
         "fixed top-[64px] left-0 right-0",
-        "md:absolute md:rounded-md md:bottom-4 md:right-4 md:left-auto md:top-auto",
-        currentMezmur ? "translate-y-0" : "-translate-y-[150%] md:translate-y-full",
+        // Desktop styles (override mobile fixed, make it absolute, remove fixed positioning constraints)
+        "md:absolute md:rounded-md md:left-auto md:top-auto md:bottom-auto md:right-auto",
+        currentMezmur
+          ? "translate-y-0"
+          : "-translate-y-[150%] md:translate-y-full",
         isMinimized ? "md:w-[200px] md:p-2" : "md:w-[320px] md:p-4",
-        !isMinimized && "p-2"
+        !isMinimized && "p-2",
       )}
       style={
-        typeof window !== "undefined" && window.innerWidth >= 768
+        isDesktop // Only apply custom left/top positioning on desktop
           ? { left: `${position.x}px`, top: `${position.y}px` }
           : {}
       }
@@ -188,7 +230,10 @@ const GlobalAudioPlayer: React.FC = () => {
           {/* Draggable Handle + Controls */}
           <div className="flex items-center justify-between mb-2">
             <div
-              className="draggable-handle flex-1 h-6 cursor-grab md:cursor-grab"
+              className={cn(
+                "flex-1 h-6",
+                isDesktop && "draggable-handle cursor-grab md:cursor-grab", // Only make it draggable on desktop
+              )}
               onMouseDown={handleMouseDown}
             >
               <div className="w-12 h-1 bg-muted rounded-full mx-auto mt-2"></div>
@@ -200,7 +245,11 @@ const GlobalAudioPlayer: React.FC = () => {
                 className="h-6 w-6 hidden md:flex"
                 onClick={() => setIsMinimized(!isMinimized)}
               >
-                {isMinimized ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+                {isMinimized ? (
+                  <Maximize2 className="h-3 w-3" />
+                ) : (
+                  <Minimize2 className="h-3 w-3" />
+                )}
               </Button>
               <Button
                 variant="ghost"
@@ -235,13 +284,21 @@ const GlobalAudioPlayer: React.FC = () => {
                     className="h-7 w-7 md:h-8 md:w-8"
                     onClick={() => {
                       if (audioRef.current) {
-                        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+                        audioRef.current.currentTime = Math.max(
+                          0,
+                          audioRef.current.currentTime - 10,
+                        );
                       }
                     }}
                   >
                     <Rewind className="h-4 w-4 md:h-5 md:w-5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={togglePlayPause}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 md:h-8 md:w-8"
+                    onClick={togglePlayPause}
+                  >
                     {isPlaying ? (
                       <Pause className="h-5 w-5 md:h-6 md:w-6 fill-current" />
                     ) : (
@@ -254,7 +311,10 @@ const GlobalAudioPlayer: React.FC = () => {
                     className="h-7 w-7 md:h-8 md:w-8"
                     onClick={() => {
                       if (audioRef.current) {
-                        audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+                        audioRef.current.currentTime = Math.min(
+                          duration,
+                          audioRef.current.currentTime + 10,
+                        );
                       }
                     }}
                   >
@@ -262,7 +322,12 @@ const GlobalAudioPlayer: React.FC = () => {
                   </Button>
                 </div>
                 <div className="flex items-center gap-1 w-20 ml-2 md:w-24 md:ml-4">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8" onClick={toggleMute}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 md:h-8 md:w-8"
+                    onClick={toggleMute}
+                  >
                     {isMuted ? (
                       <VolumeX className="h-4 w-4 md:h-5 md:w-5" />
                     ) : (
@@ -281,15 +346,30 @@ const GlobalAudioPlayer: React.FC = () => {
 
               {/* Progress Bar */}
               <div className="flex items-center gap-2 w-full mt-1 md:mt-2">
-                <span className="text-[10px] md:text-xs text-muted-foreground">{formatTime(currentTime)}</span>
-                <Slider value={[progress]} max={100} step={0.1} onValueChange={handleSeek} className="w-full h-4" />
-                <span className="text-[10px] md:text-xs text-muted-foreground">{formatTime(duration)}</span>
+                <span className="text-[10px] md:text-xs text-muted-foreground">
+                  {formatTime(currentTime)}
+                </span>
+                <Slider
+                  value={[progress]}
+                  max={100}
+                  step={0.1}
+                  onValueChange={handleSeek}
+                  className="w-full h-4"
+                />
+                <span className="text-[10px] md:text-xs text-muted-foreground">
+                  {formatTime(duration)}
+                </span>
               </div>
             </>
           ) : (
             /* Minimized Player */
             <div className="flex items-center gap-2 w-full">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={togglePlayPause}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={togglePlayPause}
+              >
                 {isPlaying ? (
                   <Pause className="h-5 w-5 fill-current" />
                 ) : (
@@ -297,8 +377,12 @@ const GlobalAudioPlayer: React.FC = () => {
                 )}
               </Button>
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-xs font-semibold truncate">{currentMezmur.title}</span>
-                <span className="text-[10px] text-muted-foreground truncate">{currentMezmur.artist}</span>
+                <span className="text-xs font-semibold truncate">
+                  {currentMezmur.title}
+                </span>
+                <span className="text-[10px] text-muted-foreground truncate">
+                  {currentMezmur.artist}
+                </span>
               </div>
             </div>
           )}
