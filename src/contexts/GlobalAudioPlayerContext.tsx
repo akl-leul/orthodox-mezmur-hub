@@ -21,15 +21,16 @@ interface Mezmur {
 
 interface AudioPlayerContextType {
   currentMezmur: Mezmur | null;
+  setCurrentMezmur: (mezmur: Mezmur | null) => void;
   isPlaying: boolean;
   playMezmur: (mezmur: Mezmur) => void;
   pauseMezmur: () => void;
   togglePlayPause: () => void;
   audioRef: React.RefObject<HTMLAudioElement>;
-  progress: number; // 0-100
-  duration: number; // in seconds
-  currentTime: number; // in seconds
-  volume: number; // 0-1
+  progress: number;
+  duration: number;
+  currentTime: number;
+  volume: number;
   setVolume: (volume: number) => void;
 }
 
@@ -158,6 +159,7 @@ export const AudioPlayerProvider: React.FC<{ children: ReactNode }> = ({
 
   const value = {
     currentMezmur,
+    setCurrentMezmur,
     isPlaying,
     playMezmur,
     pauseMezmur,

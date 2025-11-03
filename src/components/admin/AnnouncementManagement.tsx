@@ -25,7 +25,7 @@ import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 interface Announcement {
   id: string;
   title: string;
-  content: string;
+  body: string;
   created_at: string;
 }
 
@@ -55,7 +55,7 @@ const AnnouncementManagement: React.FC = () => {
   const handleCreateClick = () => {
     setCurrentAnnouncement({
       title: "",
-      content: "",
+      body: "",
     });
     setIsDialogOpen(true);
   };
@@ -79,7 +79,7 @@ const AnnouncementManagement: React.FC = () => {
   };
 
   const handleSaveAnnouncement = async () => {
-    if (!currentAnnouncement?.title || !currentAnnouncement?.content) {
+    if (!currentAnnouncement?.title || !currentAnnouncement?.body) {
       toast.error("Please fill in all required fields.");
       return;
     }
@@ -90,7 +90,7 @@ const AnnouncementManagement: React.FC = () => {
         .from("announcements")
         .update({
           title: currentAnnouncement.title,
-          content: currentAnnouncement.content,
+          body: currentAnnouncement.body,
         })
         .eq("id", currentAnnouncement.id);
 
@@ -107,7 +107,7 @@ const AnnouncementManagement: React.FC = () => {
       const { error } = await supabase.from("announcements").insert([
         {
           title: currentAnnouncement.title,
-          content: currentAnnouncement.content,
+          body: currentAnnouncement.body,
         },
       ]);
 
@@ -124,7 +124,7 @@ const AnnouncementManagement: React.FC = () => {
 
   const filteredAnnouncements = announcements.filter(announcement =>
     announcement.title.toLowerCase().includes(filter.toLowerCase()) ||
-    announcement.content.toLowerCase().includes(filter.toLowerCase())
+    announcement.body.toLowerCase().includes(filter.toLowerCase())
   );
 
   if (loading) {
@@ -157,7 +157,7 @@ const AnnouncementManagement: React.FC = () => {
           {filteredAnnouncements.map((announcement) => (
             <TableRow key={announcement.id}>
               <TableCell className="font-medium">{announcement.title}</TableCell>
-              <TableCell className="max-w-[300px] truncate">{announcement.content}</TableCell>
+              <TableCell className="max-w-[300px] truncate">{announcement.body}</TableCell>
               <TableCell>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => handleEditClick(announcement)}>
@@ -191,13 +191,13 @@ const AnnouncementManagement: React.FC = () => {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="content" className="text-right">
+              <Label htmlFor="body" className="text-right">
                 Content
               </Label>
               <Textarea
-                id="content"
-                value={currentAnnouncement?.content || ""}
-                onChange={(e) => setCurrentAnnouncement({ ...currentAnnouncement, content: e.target.value })}
+                id="body"
+                value={currentAnnouncement?.body || ""}
+                onChange={(e) => setCurrentAnnouncement({ ...currentAnnouncement, body: e.target.value })}
                 className="col-span-3"
               />
             </div>

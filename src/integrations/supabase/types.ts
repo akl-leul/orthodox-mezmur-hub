@@ -55,6 +55,7 @@ export type Database = {
       }
       comments: {
         Row: {
+          approved: boolean | null
           content: string
           created_at: string
           id: string
@@ -62,6 +63,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          approved?: boolean | null
           content: string
           created_at?: string
           id?: string
@@ -69,6 +71,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          approved?: boolean | null
           content?: string
           created_at?: string
           id?: string
@@ -177,8 +180,13 @@ export type Database = {
           author_id: string
           content: string
           created_at: string
+          excerpt: string | null
+          featured_image: string | null
           id: string
           image_url: string | null
+          published: boolean | null
+          read_time: number | null
+          slug: string | null
           title: string
           updated_at: string
         }
@@ -186,8 +194,13 @@ export type Database = {
           author_id: string
           content: string
           created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
           id?: string
           image_url?: string | null
+          published?: boolean | null
+          read_time?: number | null
+          slug?: string | null
           title: string
           updated_at?: string
         }
@@ -195,8 +208,13 @@ export type Database = {
           author_id?: string
           content?: string
           created_at?: string
+          excerpt?: string | null
+          featured_image?: string | null
           id?: string
           image_url?: string | null
+          published?: boolean | null
+          read_time?: number | null
+          slug?: string | null
           title?: string
           updated_at?: string
         }

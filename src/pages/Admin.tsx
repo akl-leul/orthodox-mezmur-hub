@@ -1,18 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Users, Music, FileText, Bell } from "lucide-react";
 import { toast } from "sonner";
-import MezmurManagement from "@/components/admin/MezmurManagement";
-import PostManagement from "@/components/admin/PostManagement";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import EnhancedMezmurManagement from "@/components/admin/EnhancedMezmurManagement";
+import EnhancedPostManagement from "@/components/admin/EnhancedPostManagement";
 import UserManagement from "@/components/admin/UserManagement";
 import AnnouncementManagement from "@/components/admin/AnnouncementManagement";
 
@@ -20,6 +15,7 @@ const Admin = () => {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [stats, setStats] = useState({
     users: 0,
     mezmurs: 0,
@@ -95,94 +91,120 @@ const Admin = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 pb-24 md:pb-8">
-      <div className="flex items-center gap-3 mb-8">
-        <Settings className="h-8 w-8 text-primary" />
-        <h1 className="text-4xl font-bold">Admin Panel</h1>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        
+        <main className="flex-1 pb-24 md:pb-8">
+          <div className="container mx-auto py-8 px-4">
+            <div className="flex items-center gap-3 mb-8">
+              <Settings className="h-8 w-8 text-primary" />
+              <h1 className="text-4xl font-bold">Admin Panel</h1>
+            </div>
+
+            {activeTab === "dashboard" && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card className="shadow-gold">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardDescription>Total Users</CardDescription>
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold">{stats.users}</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-gold">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardDescription>Mezmurs</CardDescription>
+                      <Music className="h-5 w-5 text-accent" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold">{stats.mezmurs}</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-gold">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardDescription>Posts</CardDescription>
+                      <FileText className="h-5 w-5 text-secondary" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold">{stats.posts}</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-gold">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardDescription>Announcements</CardDescription>
+                      <Bell className="h-5 w-5 text-destructive" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-3xl font-bold">{stats.announcements}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "mezmurs" && (
+              <Card className="shadow-elegant">
+                <CardHeader>
+                  <CardTitle>Mezmur Management</CardTitle>
+                  <CardDescription>Manage all mezmurs with file uploads</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <EnhancedMezmurManagement />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "posts" && (
+              <Card className="shadow-elegant">
+                <CardHeader>
+                  <CardTitle>Post Management</CardTitle>
+                  <CardDescription>Manage blog posts with images and markdown</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <EnhancedPostManagement />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "users" && (
+              <Card className="shadow-elegant">
+                <CardHeader>
+                  <CardTitle>User Management</CardTitle>
+                  <CardDescription>Manage users and assign roles</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <UserManagement />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "announcements" && (
+              <Card className="shadow-elegant">
+                <CardHeader>
+                  <CardTitle>Announcement Management</CardTitle>
+                  <CardDescription>Manage announcements for all users</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AnnouncementManagement />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </main>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card className="shadow-gold">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>Total Users</CardDescription>
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.users}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-gold">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>Mezmurs</CardDescription>
-              <Music className="h-5 w-5 text-accent" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.mezmurs}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-gold">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>Posts</CardDescription>
-              <FileText className="h-5 w-5 text-secondary" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.posts}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-gold">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardDescription>Announcements</CardDescription>
-              <Bell className="h-5 w-5 text-destructive" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{stats.announcements}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="shadow-elegant">
-        <CardHeader>
-          <CardTitle>Content Management</CardTitle>
-          <CardDescription>
-            Manage all app content including mezmurs, posts, users, and
-            announcements
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="mezmurs">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="mezmurs">Mezmurs</TabsTrigger>
-              <TabsTrigger value="posts">Posts</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="announcements">Announcements</TabsTrigger>
-            </TabsList>
-            <TabsContent value="mezmurs" className="py-4">
-              <MezmurManagement />
-            </TabsContent>
-            <TabsContent value="posts" className="py-4">
-              <PostManagement />
-            </TabsContent>
-            <TabsContent value="users" className="py-4">
-              <UserManagement />
-            </TabsContent>
-            <TabsContent value="announcements" className="py-4">
-              <AnnouncementManagement />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
+    </SidebarProvider>
   );
 };
 

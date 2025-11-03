@@ -30,9 +30,9 @@ import { Pencil, Trash2 } from "lucide-react";
 
 interface UserProfile {
   id: string;
-  full_name: string; // Changed from username
+  name: string;
   email: string;
-  role: "user" | "admin"; // Explicitly define possible roles
+  role: "user" | "admin";
   created_at: string;
 }
 
@@ -47,42 +47,33 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
-    // Fetch profiles and their associated roles
-    const { data, error } = await supabase
+    const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select(
-        `
-        id,
-        full_name, // Changed from username
-        email,
-        created_at,
-        user_roles ( role )
-      `,
-      )
+      .select("id, name, email, created_at")
       .order("created_at", { ascending: false });
 
-    if (error) {
+    if (profilesError) {
       toast.error("Failed to fetch users.");
-      console.error("Error fetching users:", error);
-    } else {
-      const usersWithRoles: UserProfile[] = data.map(
-        (profile: {
-          id: string;
-          full_name: string; // Changed from username
-          email: string;
-          created_at: string;
-          user_roles: Array<{ role: "user" | "admin" }>;
-        }) => ({
-          id: profile.id,
-          full_name: profile.full_name, // Changed from username
-          email: profile.email,
-          created_at: profile.created_at,
-          role:
-            profile.user_roles.length > 0 ? profile.user_roles[0].role : "user", // Default to 'user' if no role found
-        }),
-      );
-      setUsers(usersWithRoles);
+      console.error("Error fetching users:", profilesError);
+      setLoading(false);
+      return;
     }
+
+    const { data: roles, error: rolesError } = await supabase
+      .from("user_roles")
+      .select("user_id, role");
+
+    if (rolesError) {
+      console.error("Error fetching roles:", rolesError);
+    }
+
+    const rolesMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
+    const usersWithRoles: UserProfile[] = (profiles || []).map(profile => ({
+      ...profile,
+      role: (rolesMap.get(profile.id) as "user" | "admin") || "user",
+    }));
+
+    setUsers(usersWithRoles);
     setLoading(false);
   }, []);
 
@@ -138,16 +129,15 @@ const UserManagement: React.FC = () => {
   };
 
   const handleSaveUser = async () => {
-    if (!currentUser?.id || !currentUser?.full_name || !currentUser?.role) {
+    if (!currentUser?.id || !currentUser?.name || !currentUser?.role) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
     try {
-      // Update full_name in profiles table
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({ full_name: currentUser.full_name }) // Changed from username
+        .update({ name: currentUser.name })
         .eq("id", currentUser.id);
 
       if (profileError) throw profileError;
@@ -178,7 +168,7 @@ const UserManagement: React.FC = () => {
 
   const filteredUsers = users.filter(
     (user) =>
-      user.full_name.toLowerCase().includes(filter.toLowerCase()) || // Changed from username
+      user.name.toLowerCase().includes(filter.toLowerCase()) ||
       user.email.toLowerCase().includes(filter.toLowerCase()) ||
       user.role.toLowerCase().includes(filter.toLowerCase()),
   );
@@ -202,7 +192,7 @@ const UserManagement: React.FC = () => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Full Name</TableHead> {/* Changed from Username */}
+            <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
             <TableHead>Actions</TableHead>
@@ -211,8 +201,7 @@ const UserManagement: React.FC = () => {
         <TableBody>
           {filteredUsers.map((user) => (
             <TableRow key={user.id}>
-              <TableCell className="font-medium">{user.full_name}</TableCell>{" "}
-              {/* Changed from username */}
+              <TableCell className="font-medium">{user.name}</TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell>{user.role}</TableCell>
               <TableCell>
@@ -247,16 +236,14 @@ const UserManagement: React.FC = () => {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="full_name" className="text-right">
-                {" "}
-                {/* Changed from username */}
-                Full Name
+              <Label htmlFor="name" className="text-right">
+                Name
               </Label>
               <Input
-                id="full_name" // Changed from username
-                value={currentUser?.full_name || ""} // Changed from username
+                id="name"
+                value={currentUser?.name || ""}
                 onChange={(e) =>
-                  setCurrentUser({ ...currentUser, full_name: e.target.value })
+                  setCurrentUser({ ...currentUser, name: e.target.value })
                 }
                 className="col-span-3"
               />
