@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Mezmurs from "./pages/Mezmurs";
 import Posts from "./pages/Posts";
+import PostDetail from "./pages/PostDetail";
 import Announcements from "./pages/Announcements";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/" element={<Home />} />
               <Route path="/mezmurs" element={<Mezmurs />} />
               <Route path="/posts" element={<Posts />} />
+              <Route path="/posts/:slug" element={<PostDetail />} />
               <Route path="/announcements" element={<Announcements />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<Admin />} />

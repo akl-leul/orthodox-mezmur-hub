@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Heart, MessageCircle, FileText, Plus, Send } from "lucide-react";
+import { Heart, MessageCircle, FileText, Plus, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Session } from "@supabase/supabase-js";
@@ -13,6 +14,7 @@ interface Post {
   id: string;
   title: string;
   content: string;
+  slug: string | null;
   image_url: string | null;
   author_id: string;
   created_at: string;
@@ -30,15 +32,12 @@ interface Comment {
 }
 
 const Posts = () => {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [newPost, setNewPost] = useState({ title: "", content: "" });
-  const [selectedPost, setSelectedPost] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -95,84 +94,8 @@ const Posts = () => {
     }
   };
 
-  const handleLike = async (postId: string) => {
-    if (!session) {
-      toast.error("Please sign in to like posts");
-      return;
-    }
-
-    const post = posts.find((p) => p.id === postId);
-    const hasLiked = post?.likes.some((like) => like.id);
-
-    try {
-      if (hasLiked) {
-        await supabase.from("likes").delete().eq("post_id", postId).eq("user_id", session.user.id);
-      } else {
-        await supabase.from("likes").insert({ post_id: postId, user_id: session.user.id });
-      }
-      fetchPosts();
-    } catch (error: any) {
-      toast.error("Failed to update like");
-    }
-  };
-
-  const fetchComments = async (postId: string) => {
-    setLoadingComments(true);
-    try {
-      const { data, error } = await supabase
-        .from("comments")
-        .select(`
-          *,
-          profiles(name, profile_pic)
-        `)
-        .eq("post_id", postId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setComments(data || []);
-    } catch (error: any) {
-      toast.error("Failed to load comments");
-    } finally {
-      setLoadingComments(false);
-    }
-  };
-
-  const handleCommentToggle = (postId: string) => {
-    if (selectedPost === postId) {
-      setSelectedPost(null);
-      setComments([]);
-    } else {
-      setSelectedPost(postId);
-      fetchComments(postId);
-    }
-  };
-
-  const handleAddComment = async (postId: string) => {
-    if (!session) {
-      toast.error("Please sign in to comment");
-      return;
-    }
-
-    if (!newComment.trim()) {
-      toast.error("Comment cannot be empty");
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from("comments").insert({
-        post_id: postId,
-        user_id: session.user.id,
-        content: newComment.trim(),
-      });
-
-      if (error) throw error;
-      toast.success("Comment added!");
-      setNewComment("");
-      fetchComments(postId);
-      fetchPosts();
-    } catch (error: any) {
-      toast.error("Failed to add comment");
-    }
+  const handleReadPost = (post: Post) => {
+    navigate(`/posts/${post.slug || post.id}`);
   };
 
   if (loading) {
@@ -231,101 +154,39 @@ const Posts = () => {
       ) : (
         <div className="space-y-6">
           {posts.map((post) => (
-            <Card key={post.id} className="shadow-gold hover:shadow-elegant transition-smooth">
+            <Card key={post.id} className="shadow-gold hover:shadow-elegant transition-smooth cursor-pointer" onClick={() => handleReadPost(post)}>
+              {post.image_url && (
+                <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-t-lg" />
+              )}
               <CardHeader>
                 <div className="flex items-center gap-3 mb-2">
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="font-semibold">{post.profiles?.name || "Anonymous"}</p>
                     <p className="text-sm text-muted-foreground">
                       {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                     </p>
                   </div>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleReadPost(post); }}>
+                    Read <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
                 </div>
                 <CardTitle>{post.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mb-4">{post.content}</p>
+                <p className="text-muted-foreground mb-4 line-clamp-3">{post.content}</p>
                 <div className="flex items-center gap-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleLike(post.id)}
-                    className="gap-2"
-                  >
-                    <Heart
-                      className={`h-4 w-4 ${post.likes.length > 0 ? "fill-current text-destructive" : ""}`}
-                    />
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Heart className="h-4 w-4" />
                     {post.likes.length}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCommentToggle(post.id)}
-                    className="gap-2"
-                  >
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
                     <MessageCircle className="h-4 w-4" />
                     {post.comments.length}
-                  </Button>
-                </div>
-
-                {selectedPost === post.id && (
-                  <div className="mt-4 space-y-4 pt-4 border-t">
-                    <h4 className="font-semibold">Comments</h4>
-                    
-                    {session && (
-                      <div className="flex gap-2">
-                        <Textarea
-                          placeholder="Write a comment..."
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          rows={2}
-                          className="flex-1"
-                        />
-                        <Button
-                          onClick={() => handleAddComment(post.id)}
-                          size="sm"
-                          className="self-end"
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-
-                    {loadingComments ? (
-                      <p className="text-sm text-muted-foreground">Loading comments...</p>
-                    ) : comments.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        No comments yet. Be the first to comment!
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {comments.map((comment) => (
-                          <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <MessageCircle className="h-4 w-4 text-primary" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-semibold">
-                                  {comment.profiles?.name || "Anonymous"}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(comment.created_at), {
-                                    addSuffix: true,
-                                  })}
-                                </p>
-                              </div>
-                            </div>
-                            <p className="text-sm">{comment.content}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           ))}
