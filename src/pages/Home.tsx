@@ -25,7 +25,6 @@ const Home = () => {
         }}
       >
         <div className="container mx-auto text-center relative z-10">
-          <Music className="h-20 w-20 mx-auto mb-6 animate-pulse" />
           <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-md">
             Orthodox Mezmur Hub
           </h1>

@@ -4,7 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Heart, MessageCircle, Share2, ArrowLeft, Send, CheckCircle, Clock } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  ArrowLeft,
+  Send,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Session } from "@supabase/supabase-js";
@@ -48,7 +56,9 @@ const PostDetail = () => {
       setSession(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
     });
 
@@ -65,12 +75,14 @@ const PostDetail = () => {
     try {
       const { data, error } = await supabase
         .from("posts")
-        .select(`
+        .select(
+          `
           *,
           profiles(name, profile_pic),
           likes(id),
           comments(id)
-        `)
+        `,
+        )
         .eq("slug", slug)
         .maybeSingle();
 
@@ -118,9 +130,15 @@ const PostDetail = () => {
 
     try {
       if (hasLiked) {
-        await supabase.from("likes").delete().eq("post_id", post.id).eq("user_id", session.user.id);
+        await supabase
+          .from("likes")
+          .delete()
+          .eq("post_id", post.id)
+          .eq("user_id", session.user.id);
       } else {
-        await supabase.from("likes").insert({ post_id: post.id, user_id: session.user.id });
+        await supabase
+          .from("likes")
+          .insert({ post_id: post.id, user_id: session.user.id });
       }
       fetchPost();
     } catch (error: any) {
@@ -201,8 +219,12 @@ const PostDetail = () => {
   const isAuthor = session?.user.id === post.author_id;
 
   return (
-    <div className="container mx-auto py-8 px-4 pb-24 md:pb-8">
-      <Button variant="ghost" onClick={() => navigate("/posts")} className="mb-4">
+    <div className="mx-auto py-8 md:px-40 ms:px-8 pb-24 md:pb-8">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/posts")}
+        className="mb-4"
+      >
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Posts
       </Button>
 
@@ -221,9 +243,14 @@ const PostDetail = () => {
                 <MessageCircle className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="font-semibold">{post.profiles?.name || "Anonymous"}</p>
+                <p className="font-semibold">
+                  {post.profiles?.name || "Anonymous"}
+                </p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })} · {post.read_time} min read
+                  {formatDistanceToNow(new Date(post.created_at), {
+                    addSuffix: true,
+                  })}{" "}
+                  · {post.read_time} min read
                 </p>
               </div>
             </div>
@@ -232,18 +259,29 @@ const PostDetail = () => {
             </Button>
           </div>
           <h1 className="text-4xl font-bold mb-2">{post.title}</h1>
-          {post.excerpt && <p className="text-lg text-muted-foreground">{post.excerpt}</p>}
+          {post.excerpt && (
+            <p className="text-lg text-muted-foreground">{post.excerpt}</p>
+          )}
         </CardHeader>
         <CardContent>
           <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
-            {post.content.split('\n').map((paragraph, i) => (
-              <p key={i} className="mb-4">{paragraph}</p>
+            {post.content.split("\n").map((paragraph, i) => (
+              <p key={i} className="mb-4">
+                {paragraph}
+              </p>
             ))}
           </div>
 
           <div className="flex items-center gap-4 py-4 border-t border-b">
-            <Button variant="ghost" size="sm" onClick={handleLike} className="gap-2">
-              <Heart className={`h-4 w-4 ${post.likes.length > 0 ? "fill-current text-destructive" : ""}`} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLike}
+              className="gap-2"
+            >
+              <Heart
+                className={`h-4 w-4 ${post.likes.length > 0 ? "fill-current text-destructive" : ""}`}
+              />
               {post.likes.length}
             </Button>
             <Button variant="ghost" size="sm" className="gap-2">
@@ -254,7 +292,7 @@ const PostDetail = () => {
 
           <div className="mt-8 space-y-4">
             <h3 className="text-2xl font-bold">Comments</h3>
-            
+
             {session && (
               <div className="flex gap-2">
                 <Textarea
@@ -264,16 +302,24 @@ const PostDetail = () => {
                   rows={3}
                   className="flex-1"
                 />
-                <Button onClick={handleAddComment} size="sm" className="self-end">
+                <Button
+                  onClick={handleAddComment}
+                  size="sm"
+                  className="self-end"
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
             )}
 
             {loadingComments ? (
-              <p className="text-sm text-muted-foreground">Loading comments...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading comments...
+              </p>
             ) : comments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No comments yet. Be the first to comment!</p>
+              <p className="text-sm text-muted-foreground">
+                No comments yet. Be the first to comment!
+              </p>
             ) : (
               <div className="space-y-3">
                 {comments.map((comment) => (
@@ -284,9 +330,13 @@ const PostDetail = () => {
                           <MessageCircle className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold">{comment.profiles?.name || "Anonymous"}</p>
+                          <p className="text-sm font-semibold">
+                            {comment.profiles?.name || "Anonymous"}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(comment.created_at), {
+                              addSuffix: true,
+                            })}
                           </p>
                         </div>
                       </div>

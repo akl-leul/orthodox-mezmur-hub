@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -44,7 +50,9 @@ const Posts = () => {
       setSession(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
     });
 
@@ -57,12 +65,14 @@ const Posts = () => {
     try {
       const { data, error } = await supabase
         .from("posts")
-        .select(`
+        .select(
+          `
           *,
           profiles(name, profile_pic),
           likes(id),
           comments(id)
-        `)
+        `,
+        )
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -110,7 +120,10 @@ const Posts = () => {
           <h1 className="text-4xl font-bold">Blog & News</h1>
         </div>
         {session && (
-          <Button onClick={() => setShowCreatePost(!showCreatePost)} className="gap-2">
+          <Button
+            onClick={() => setShowCreatePost(!showCreatePost)}
+            className="gap-2"
+          >
             <Plus className="h-4 w-4" />
             Create Post
           </Button>
@@ -126,17 +139,24 @@ const Posts = () => {
             <Input
               placeholder="Post title"
               value={newPost.title}
-              onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+              onChange={(e) =>
+                setNewPost({ ...newPost, title: e.target.value })
+              }
             />
             <Textarea
               placeholder="Share your thoughts..."
               value={newPost.content}
-              onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+              onChange={(e) =>
+                setNewPost({ ...newPost, content: e.target.value })
+              }
               rows={6}
             />
             <div className="flex gap-2">
               <Button onClick={handleCreatePost}>Publish Post</Button>
-              <Button variant="outline" onClick={() => setShowCreatePost(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setShowCreatePost(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -148,15 +168,25 @@ const Posts = () => {
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">No posts yet. Be the first to share!</p>
+            <p className="text-muted-foreground">
+              No posts yet. Be the first to share!
+            </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="gap-8 md:grid grid-cols-3 ">
           {posts.map((post) => (
-            <Card key={post.id} className="shadow-gold hover:shadow-elegant transition-smooth cursor-pointer" onClick={() => handleReadPost(post)}>
+            <Card
+              key={post.id}
+              className="shadow-gold hover:shadow-elegant transition-smooth cursor-pointer mb-4"
+              onClick={() => handleReadPost(post)}
+            >
               {post.image_url && (
-                <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-t-lg" />
+                <img
+                  src={post.image_url}
+                  alt={post.title}
+                  className="w-full h-48 object-cover rounded-t-lg"
+                />
               )}
               <CardHeader>
                 <div className="flex items-center gap-3 mb-2">
@@ -164,19 +194,32 @@ const Posts = () => {
                     <FileText className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold">{post.profiles?.name || "Anonymous"}</p>
+                    <p className="font-semibold">
+                      {post.profiles?.name || "Anonymous"}
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(post.created_at), {
+                        addSuffix: true,
+                      })}
                     </p>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleReadPost(post); }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReadPost(post);
+                    }}
+                  >
                     Read <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
                 <CardTitle>{post.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground mb-4 line-clamp-3">{post.content}</p>
+                <p className="text-muted-foreground mb-4 line-clamp-3">
+                  {post.content}
+                </p>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <Heart className="h-4 w-4" />
