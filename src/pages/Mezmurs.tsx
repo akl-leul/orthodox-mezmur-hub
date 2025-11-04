@@ -10,8 +10,17 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Music, Play, Download, Search, Pause } from "lucide-react";
+import {
+  Music,
+  Play,
+  Download,
+  Search,
+  Pause,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Mezmur {
   id: string;
@@ -28,7 +37,7 @@ const Mezmurs = () => {
   const [filteredMezmurs, setFilteredMezmurs] = useState<Mezmur[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMezmur, setSelectedMezmur] = useState<Mezmur | null>(null);
+  const [expandedMezmurId, setExpandedMezmurId] = useState<string | null>(null); // New state for expanded lyrics
   const {
     currentMezmur: globalCurrentMezmur,
     isPlaying: globalIsPlaying,
@@ -70,7 +79,8 @@ const Mezmurs = () => {
     }
   };
 
-  const handlePlayToggle = (mezmur: Mezmur) => {
+  const handlePlayToggle = (e: React.MouseEvent, mezmur: Mezmur) => {
+    e.stopPropagation(); // Prevent card onClick from firing
     if (globalCurrentMezmur?.id === mezmur.id && globalIsPlaying) {
       pauseMezmur();
     } else {
@@ -80,7 +90,7 @@ const Mezmurs = () => {
 
   const handleDownload = (e: React.MouseEvent, mezmur: Mezmur) => {
     e.stopPropagation(); // Prevent card onClick from firing
-    if (mezmur.audio_url) {
+    if (mezmur.downloadable && mezmur.audio_url) {
       const link = document.createElement("a");
       link.href = mezmur.audio_url;
       const url = new URL(mezmur.audio_url);
@@ -88,7 +98,9 @@ const Mezmurs = () => {
       const filenameWithExtension = pathSegments[pathSegments.length - 1];
       const parts = filenameWithExtension.split(".");
       const extension =
-        parts.length > 1 && parts.pop() !== "" ? parts.pop() : "mp3";
+        parts.length > 1 && parts[parts.length - 1] !== ""
+          ? parts[parts.length - 1]
+          : "mp3";
 
       link.setAttribute(
         "download",
@@ -99,11 +111,13 @@ const Mezmurs = () => {
       document.body.removeChild(link);
       toast.success(`Downloading ${mezmur.title}...`);
     } else {
-      toast.error("No audio URL available for download.");
+      toast.error("No audio URL available for download or not downloadable.");
     }
   };
 
-  // Removed local useEffect for audio cleanup, now handled by GlobalAudioPlayerContext
+  const handleCardClick = (mezmurId: string) => {
+    setExpandedMezmurId((prevId) => (prevId === mezmurId ? null : mezmurId));
+  };
 
   if (loading) {
     return (
@@ -148,25 +162,42 @@ const Mezmurs = () => {
           {filteredMezmurs.map((mezmur) => (
             <Card
               key={mezmur.id}
-              className="shadow-gold hover:shadow-elegant transition-smooth cursor-pointer"
-              onClick={() => setSelectedMezmur(mezmur)}
+              className={cn(
+                "shadow-gold hover:shadow-elegant transition-smooth cursor-pointer flex flex-col",
+                expandedMezmurId === mezmur.id &&
+                  "shadow-elegant border-primary/20",
+              )}
             >
-              <CardHeader>
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-                  <Music className="h-6 w-6 text-primary" />
+              <CardHeader onClick={() => handleCardClick(mezmur.id)}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Music className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="line-clamp-1 text-base md:text-lg">
+                        {mezmur.title}
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        {mezmur.artist}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="shrink-0">
+                    {expandedMezmurId === mezmur.id ? (
+                      <ChevronUp className="h-5 w-5" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5" />
+                    )}
+                  </Button>
                 </div>
-                <CardTitle className="line-clamp-1">{mezmur.title}</CardTitle>
-                <CardDescription>{mezmur.artist}</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
+              <CardContent className="flex-grow">
+                <div className="flex gap-2 mb-4">
                   <Button
                     size="sm"
                     className="flex-1 gap-2"
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent card onClick from firing
-                      handlePlayToggle(mezmur);
-                    }}
+                    onClick={(e) => handlePlayToggle(e, mezmur)}
                   >
                     {globalCurrentMezmur?.id === mezmur.id &&
                     globalIsPlaying ? (
@@ -188,28 +219,24 @@ const Mezmurs = () => {
                     </Button>
                   )}
                 </div>
+                {expandedMezmurId === mezmur.id && (
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-md font-semibold mb-2">Lyrics</h3>
+                    {mezmur.lyrics ? (
+                      <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                        {mezmur.lyrics}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Lyrics not available for this Mezmur.
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
-      )}
-
-      {selectedMezmur && (
-        <Card className="mt-8 shadow-elegant">
-          <CardHeader>
-            <CardTitle>Lyrics - {selectedMezmur.title}</CardTitle>
-            <CardDescription>by {selectedMezmur.artist}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {selectedMezmur.lyrics ? (
-              <div className="whitespace-pre-wrap">{selectedMezmur.lyrics}</div>
-            ) : (
-              <p className="text-muted-foreground">
-                Lyrics not available for this Mezmur
-              </p>
-            )}
-          </CardContent>
-        </Card>
       )}
     </div>
   );

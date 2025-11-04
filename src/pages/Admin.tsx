@@ -1,8 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Users, Music, FileText, Bell, FileStack, Podcast as PodcastIcon } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Settings,
+  Users,
+  Music,
+  FileText,
+  Bell,
+  FileStack,
+  Podcast as PodcastIcon,
+  Menu,
+} from "lucide-react";
 import { toast } from "sonner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
@@ -29,23 +44,23 @@ const Admin = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const [usersRes, mezmursRes, postsRes, announcementsRes, pagesRes, podcastsRes] =
-        await Promise.all([
-          supabase
-            .from("profiles")
-            .select("id", { count: "exact", head: true }),
-          supabase.from("mezmurs").select("id", { count: "exact", head: true }),
-          supabase.from("posts").select("id", { count: "exact", head: true }),
-          supabase
-            .from("announcements")
-            .select("id", { count: "exact", head: true }),
-          supabase
-            .from("pages")
-            .select("id", { count: "exact", head: true }),
-          supabase
-            .from("podcasts")
-            .select("id", { count: "exact", head: true }),
-        ]);
+      const [
+        usersRes,
+        mezmursRes,
+        postsRes,
+        announcementsRes,
+        pagesRes,
+        podcastsRes,
+      ] = await Promise.all([
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase.from("mezmurs").select("id", { count: "exact", head: true }),
+        supabase.from("posts").select("id", { count: "exact", head: true }),
+        supabase
+          .from("announcements")
+          .select("id", { count: "exact", head: true }),
+        supabase.from("pages").select("id", { count: "exact", head: true }),
+        supabase.from("podcasts").select("id", { count: "exact", head: true }),
+      ]);
 
       setStats({
         users: usersRes.count || 0,
@@ -106,11 +121,13 @@ const Admin = () => {
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        
+
         <main className="flex-1 pb-24 md:pb-8">
           <div className="container mx-auto py-8 px-4">
             <div className="flex items-center gap-3 mb-8">
               <Settings className="h-8 w-8 text-primary" />
+              {""}
+
               <h1 className="text-4xl font-bold">Admin Panel</h1>
             </div>
 
@@ -194,7 +211,9 @@ const Admin = () => {
               <Card className="shadow-elegant">
                 <CardHeader>
                   <CardTitle>Mezmur Management</CardTitle>
-                  <CardDescription>Manage all mezmurs with file uploads</CardDescription>
+                  <CardDescription>
+                    Manage all mezmurs with file uploads
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <EnhancedMezmurManagement />
@@ -206,7 +225,9 @@ const Admin = () => {
               <Card className="shadow-elegant">
                 <CardHeader>
                   <CardTitle>Post Management</CardTitle>
-                  <CardDescription>Manage blog posts with images and markdown</CardDescription>
+                  <CardDescription>
+                    Manage blog posts with images and markdown
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <EnhancedPostManagement />
@@ -218,7 +239,9 @@ const Admin = () => {
               <Card className="shadow-elegant">
                 <CardHeader>
                   <CardTitle>User Management</CardTitle>
-                  <CardDescription>Manage users and assign roles</CardDescription>
+                  <CardDescription>
+                    Manage users and assign roles
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <UserManagement />
@@ -230,7 +253,9 @@ const Admin = () => {
               <Card className="shadow-elegant">
                 <CardHeader>
                   <CardTitle>Announcement Management</CardTitle>
-                  <CardDescription>Manage announcements for all users</CardDescription>
+                  <CardDescription>
+                    Manage announcements for all users
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <AnnouncementManagement />
@@ -242,7 +267,9 @@ const Admin = () => {
               <Card className="shadow-elegant">
                 <CardHeader>
                   <CardTitle>Page Management</CardTitle>
-                  <CardDescription>Create and manage dynamic pages</CardDescription>
+                  <CardDescription>
+                    Create and manage dynamic pages
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <PageManagement />

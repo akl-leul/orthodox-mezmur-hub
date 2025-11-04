@@ -12,10 +12,20 @@ import {
   Settings,
   Podcast,
 } from "lucide-react";
+import { Menu } from "lucide-react"; // Import Menu icon
 import { cn } from "@/lib/utils";
 import { Session } from "@supabase/supabase-js";
 import GlobalAudioPlayer from "@/components/GlobalAudioPlayer";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet"; // Import Sheet components
 
 interface DynamicPage {
   id: string;
@@ -56,7 +66,9 @@ const Layout = () => {
     try {
       const { data, error } = await supabase
         .from("pages")
-        .select("id, title, slug, show_in_nav, show_in_footer, nav_order, footer_order")
+        .select(
+          "id, title, slug, show_in_nav, show_in_footer, nav_order, footer_order",
+        )
         .eq("published", true)
         .order("nav_order", { ascending: true });
 
@@ -116,13 +128,72 @@ const Layout = () => {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 shadow-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2 font-bold text-xl">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-bold text-xl ml-4 md:ml-0"
+          >
+            {" "}
+            {/* Adjusted margin for logo */}
             <Music className="h-6 w-6 text-primary" />
             <span className="gradient-primary bg-clip-text text-transparent">
               Orthodox Mezmur Hub
             </span>
           </Link>
 
+          {/* Hamburger Menu for Mobile */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="flex flex-col">
+              <SheetHeader>
+                <SheetTitle>Navigation</SheetTitle>
+                <SheetDescription>Explore Orthodox Mezmur Hub</SheetDescription>
+              </SheetHeader>
+              <nav className="flex flex-col gap-2 py-4">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <SheetClose asChild key={item.path}>
+                      <Link
+                        to={item.path}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                      >
+                        <Icon className="h-5 w-5" />
+                        {item.label}
+                      </Link>
+                    </SheetClose>
+                  );
+                })}
+              </nav>
+              <div className="mt-auto border-t pt-4">
+                <ThemeToggle />
+                {session ? (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start mt-2"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="mr-2 h-5 w-5" />
+                    Sign Out
+                  </Button>
+                ) : (
+                  <SheetClose asChild>
+                    <Link to="/auth">
+                      <Button className="w-full justify-start mt-2">
+                        Sign In
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -166,7 +237,8 @@ const Layout = () => {
             <div>
               <h3 className="font-bold text-lg mb-4">Orthodox Mezmur Hub</h3>
               <p className="text-sm text-muted-foreground">
-                Your source for Orthodox Christian spiritual music and teachings.
+                Your source for Orthodox Christian spiritual music and
+                teachings.
               </p>
             </div>
             <div>
@@ -195,7 +267,8 @@ const Layout = () => {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Orthodox Mezmur Hub. All rights reserved.
+            © {new Date().getFullYear()} Orthodox Mezmur Hub. All rights
+            reserved.
           </div>
         </div>
       </footer>

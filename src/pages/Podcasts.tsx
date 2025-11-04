@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "sonner";
 
 interface Podcast {
@@ -19,6 +25,31 @@ export default function Podcasts() {
     fetchPodcasts();
   }, []);
 
+  // ✅ Convert any YouTube URL into embeddable format
+  const normalizeYouTubeUrl = (url: string) => {
+    try {
+      if (url.includes("embed")) return url; // already in embed format
+      const parsed = new URL(url);
+
+      // youtube.com/watch?v=xxxx
+      if (parsed.hostname.includes("youtube.com")) {
+        const videoId = parsed.searchParams.get("v");
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+      }
+
+      // youtu.be/xxxx
+      if (parsed.hostname === "youtu.be") {
+        const videoId = parsed.pathname.replace("/", "");
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+
+      // otherwise return as-is
+      return url;
+    } catch {
+      return url; // fallback if invalid URL
+    }
+  };
+
   const fetchPodcasts = async () => {
     try {
       const { data, error } = await supabase
@@ -28,7 +59,14 @@ export default function Podcasts() {
         .order("display_order", { ascending: true });
 
       if (error) throw error;
-      setPodcasts(data || []);
+
+      // ✅ Normalize embed URLs before storing
+      const normalized = (data || []).map((p) => ({
+        ...p,
+        embed_url: normalizeYouTubeUrl(p.embed_url),
+      }));
+
+      setPodcasts(normalized);
     } catch (error: any) {
       toast.error("Failed to load podcasts");
       console.error(error);
@@ -48,7 +86,7 @@ export default function Podcasts() {
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-4xl font-bold mb-8">Podcasts</h1>
-      
+
       {podcasts.length === 0 ? (
         <p className="text-muted-foreground">No podcasts available yet.</p>
       ) : (
@@ -69,6 +107,7 @@ export default function Podcasts() {
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    title={podcast.title}
                   />
                 </div>
               </CardContent>

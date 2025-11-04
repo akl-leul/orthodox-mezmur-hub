@@ -13,13 +13,23 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="gradient-hero text-primary-foreground py-20 px-4">
-        <div className="container mx-auto text-center">
+      <section
+        className="relative min-h-screen flex flex-row justify-center items-center text-primary-foreground py-20 px-4 overflow-hidden"
+        style={{
+          backgroundImage: `
+            linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0)),
+            url('/image.jpg')
+          `,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="container mx-auto text-center relative z-10">
           <Music className="h-20 w-20 mx-auto mb-6 animate-pulse" />
-          <h1 className="text-4xl md:text-6xl font-bold mb-4">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-md">
             Orthodox Mezmur Hub
           </h1>
-          <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90">
+          <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90 drop-shadow-sm">
             Experience the beauty of Ethiopian Orthodox spiritual music. Listen
             to Mezmurs, read lyrics, and connect with a community of believers.
           </p>
@@ -40,6 +50,8 @@ const Home = () => {
             </Link>
           </div>
         </div>
+        {/* Optional subtle overlay for smooth gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </section>
 
       {/* Features Section */}
