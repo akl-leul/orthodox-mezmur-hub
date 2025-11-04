@@ -20,6 +20,8 @@ const menuItems = [
   { title: "Posts", icon: FileText, value: "posts" },
   { title: "Users", icon: Users, value: "users" },
   { title: "Announcements", icon: Bell, value: "announcements" },
+  { title: "Pages", icon: FileText, value: "pages" },
+  { title: "Podcasts", icon: Music, value: "podcasts" },
 ];
 
 interface AdminSidebarProps {

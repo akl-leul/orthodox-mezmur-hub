@@ -175,6 +175,87 @@ export type Database = {
           },
         ]
       }
+      pages: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string
+          footer_order: number | null
+          id: string
+          nav_order: number | null
+          password: string | null
+          published: boolean
+          show_in_footer: boolean
+          show_in_nav: boolean
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by: string
+          footer_order?: number | null
+          id?: string
+          nav_order?: number | null
+          password?: string | null
+          published?: boolean
+          show_in_footer?: boolean
+          show_in_nav?: boolean
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string
+          footer_order?: number | null
+          id?: string
+          nav_order?: number | null
+          password?: string | null
+          published?: boolean
+          show_in_footer?: boolean
+          show_in_nav?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      podcasts: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          embed_url: string
+          id: string
+          published: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          embed_url: string
+          id?: string
+          published?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          embed_url?: string
+          id?: string
+          published?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           author_id: string

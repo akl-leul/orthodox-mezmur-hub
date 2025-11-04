@@ -14,6 +14,8 @@ import Announcements from "./pages/Announcements";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
+import DynamicPage from "./pages/DynamicPage";
+import Podcasts from "./pages/Podcasts";
 
 const queryClient = new QueryClient();
 
@@ -32,9 +34,11 @@ const App = () => (
               <Route path="/mezmurs" element={<Mezmurs />} />
               <Route path="/posts" element={<Posts />} />
               <Route path="/posts/:slug" element={<PostDetail />} />
+              <Route path="/podcasts" element={<Podcasts />} />
               <Route path="/announcements" element={<Announcements />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/admin" element={<Admin />} />
+              <Route path="/page/:slug" element={<DynamicPage />} />
             </Route>
             <Route path="/auth" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -10,16 +10,29 @@ import {
   User,
   LogOut,
   Settings,
+  Podcast,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Session } from "@supabase/supabase-js";
-import GlobalAudioPlayer from "@/components/GlobalAudioPlayer"; // Import the GlobalAudioPlayer
+import GlobalAudioPlayer from "@/components/GlobalAudioPlayer";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+interface DynamicPage {
+  id: string;
+  title: string;
+  slug: string;
+  show_in_nav: boolean;
+  show_in_footer: boolean;
+  nav_order: number;
+  footer_order: number;
+}
 
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [dynamicPages, setDynamicPages] = useState<DynamicPage[]>([]);
 
   useEffect(() => {
     const {
@@ -34,8 +47,25 @@ const Layout = () => {
       checkAdmin(session?.user?.id);
     });
 
+    fetchDynamicPages();
+
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchDynamicPages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("pages")
+        .select("id, title, slug, show_in_nav, show_in_footer, nav_order, footer_order")
+        .eq("published", true)
+        .order("nav_order", { ascending: true });
+
+      if (error) throw error;
+      setDynamicPages(data || []);
+    } catch (error) {
+      console.error("Error fetching dynamic pages:", error);
+    }
+  };
 
   const checkAdmin = async (userId?: string) => {
     if (!userId) {
@@ -62,9 +92,21 @@ const Layout = () => {
     { path: "/", icon: Home, label: "Home" },
     { path: "/mezmurs", icon: Music, label: "Mezmurs" },
     { path: "/posts", icon: FileText, label: "Blog" },
+    { path: "/podcasts", icon: Podcast, label: "Podcasts" },
     { path: "/announcements", icon: Bell, label: "News" },
     { path: "/profile", icon: User, label: "Profile" },
   ];
+
+  // Add dynamic pages to navigation
+  dynamicPages
+    .filter((page) => page.show_in_nav)
+    .forEach((page) => {
+      navItems.push({
+        path: `/page/${page.slug}`,
+        icon: FileText,
+        label: page.title,
+      });
+    });
 
   if (isAdmin) {
     navItems.push({ path: "/admin", icon: Settings, label: "Admin" });
@@ -98,6 +140,7 @@ const Layout = () => {
                 </Link>
               );
             })}
+            <ThemeToggle />
             {session && (
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
@@ -116,6 +159,46 @@ const Layout = () => {
       <main className="flex-1">
         <Outlet />
       </main>
+
+      <footer className="border-t bg-card py-8 mt-16">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <h3 className="font-bold text-lg mb-4">Orthodox Mezmur Hub</h3>
+              <p className="text-sm text-muted-foreground">
+                Your source for Orthodox Christian spiritual music and teachings.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-bold text-lg mb-4">Quick Links</h3>
+              <ul className="space-y-2">
+                {dynamicPages
+                  .filter((page) => page.show_in_footer)
+                  .sort((a, b) => a.footer_order - b.footer_order)
+                  .map((page) => (
+                    <li key={page.id}>
+                      <Link
+                        to={`/page/${page.slug}`}
+                        className="text-sm text-muted-foreground hover:text-primary transition-smooth"
+                      >
+                        {page.title}
+                      </Link>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-bold text-lg mb-4">Connect</h3>
+              <p className="text-sm text-muted-foreground">
+                Stay connected with our community.
+              </p>
+            </div>
+          </div>
+          <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
+            © {new Date().getFullYear()} Orthodox Mezmur Hub. All rights reserved.
+          </div>
+        </div>
+      </footer>
 
       {/* Mobile Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-card shadow-elegant z-50">
