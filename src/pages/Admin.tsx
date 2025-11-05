@@ -206,7 +206,7 @@ const Admin = () => {
         .select(`category_id`);
 
       const { data: categoriesData, error: categoriesError } = await supabase
-        .from("mezmur_categories")
+        .from("categories")
         .select("id, name");
 
       if (mezmurError)
