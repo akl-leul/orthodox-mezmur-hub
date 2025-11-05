@@ -15,7 +15,6 @@ import { Heart, MessageCircle, FileText, Plus, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Session } from "@supabase/supabase-js";
-import { SaveButton } from "@/components/SaveButton";
 
 interface Post {
   id: string;
@@ -192,7 +191,15 @@ const Posts = () => {
               <CardHeader>
                 <div className="flex items-center gap-3 mb-2">
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <FileText className="h-5 w-5 text-primary" />
+                    {post.profiles?.profile_pic ? (
+                      <img
+                        src={post.profiles.profile_pic}
+                        alt={post.profiles.name}
+                        className="h-full w-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <FileText className="h-5 w-5 text-primary" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="font-semibold">
@@ -204,19 +211,16 @@ const Posts = () => {
                       })}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <SaveButton contentType="posts" itemId={post.id} />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleReadPost(post);
-                      }}
-                    >
-                      Read <ArrowRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReadPost(post);
+                    }}
+                  >
+                    Read <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
                 </div>
                 <CardTitle>{post.title}</CardTitle>
               </CardHeader>

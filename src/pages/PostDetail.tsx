@@ -240,7 +240,15 @@ const PostDetail = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <MessageCircle className="h-6 w-6 text-primary" />
+                {post.profiles?.profile_pic ? (
+                  <img
+                    src={post.profiles.profile_pic}
+                    alt={post.profiles.name}
+                    className="h-full w-full object-cover rounded-full"
+                  />
+                ) : (
+                  <MessageCircle className="h-6 w-6 text-primary" />
+                )}
               </div>
               <div>
                 <p className="font-semibold">
@@ -327,7 +335,15 @@ const PostDetail = () => {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <MessageCircle className="h-4 w-4 text-primary" />
+                          {comment.profiles?.profile_pic ? (
+                            <img
+                              src={comment.profiles.profile_pic}
+                              alt={comment.profiles.name}
+                              className="h-full w-full object-cover rounded-full"
+                            />
+                          ) : (
+                            <MessageCircle className="h-4 w-4 text-primary" />
+                          )}
                         </div>
                         <div>
                           <p className="text-sm font-semibold">
