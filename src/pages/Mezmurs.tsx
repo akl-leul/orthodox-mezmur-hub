@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SaveButton } from "@/components/SaveButton";
 
 interface Mezmur {
   id: string;
@@ -209,6 +210,7 @@ const Mezmurs = () => {
                       ? "Pause"
                       : "Play"}
                   </Button>
+                  <SaveButton contentType="mezmurs" itemId={mezmur.id} showText />
                   {mezmur.downloadable && (
                     <Button
                       size="sm"

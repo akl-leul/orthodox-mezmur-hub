@@ -12,6 +12,7 @@ import Posts from "./pages/Posts";
 import PostDetail from "./pages/PostDetail";
 import Announcements from "./pages/Announcements";
 import Profile from "./pages/Profile";
+import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import DynamicPage from "./pages/DynamicPage";
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/podcasts" element={<Podcasts />} />
               <Route path="/announcements" element={<Announcements />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/page/:slug" element={<DynamicPage />} />
             </Route>

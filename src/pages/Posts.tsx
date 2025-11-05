@@ -15,6 +15,7 @@ import { Heart, MessageCircle, FileText, Plus, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Session } from "@supabase/supabase-js";
+import { SaveButton } from "@/components/SaveButton";
 
 interface Post {
   id: string;
@@ -203,16 +204,19 @@ const Posts = () => {
                       })}
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleReadPost(post);
-                    }}
-                  >
-                    Read <ArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <SaveButton contentType="posts" itemId={post.id} />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReadPost(post);
+                      }}
+                    >
+                      Read <ArrowRight className="ml-1 h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <CardTitle>{post.title}</CardTitle>
               </CardHeader>

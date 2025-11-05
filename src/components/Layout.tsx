@@ -106,7 +106,7 @@ const Layout = () => {
     { path: "/posts", icon: FileText, label: "Blog" },
     { path: "/podcasts", icon: Podcast, label: "Podcasts" },
     { path: "/announcements", icon: Bell, label: "News" },
-    { path: "/profile", icon: User, label: "Profile" },
+    { path: "/dashboard", icon: User, label: "Dashboard" },
   ];
 
   // Add dynamic pages to navigation
