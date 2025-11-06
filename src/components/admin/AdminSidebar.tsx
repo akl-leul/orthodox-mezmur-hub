@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Music, FileText, Users, Bell, LayoutDashboard, ChevronLeft } from "lucide-react";
+import { Music, FileText, Users, Bell, LayoutDashboard, ChevronLeft, Brain, BarChart } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,12 +16,14 @@ import { cn } from "@/lib/utils";
 
 const menuItems = [
   { title: "Dashboard", icon: LayoutDashboard, value: "dashboard" },
+  { title: "Analytics", icon: BarChart, value: "analytics" },
   { title: "Mezmurs", icon: Music, value: "mezmurs" },
   { title: "Posts", icon: FileText, value: "posts" },
   { title: "Users", icon: Users, value: "users" },
   { title: "Announcements", icon: Bell, value: "announcements" },
   { title: "Pages", icon: FileText, value: "pages" },
   { title: "Podcasts", icon: Music, value: "podcasts" },
+  { title: "Quizzes", icon: Brain, value: "quizzes" },
 ];
 
 interface AdminSidebarProps {

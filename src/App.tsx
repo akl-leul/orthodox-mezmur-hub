@@ -18,6 +18,8 @@ import NotFound from "./pages/NotFound";
 import DynamicPage from "./pages/DynamicPage";
 import Podcasts from "./pages/Podcasts";
 import Discussions from "./pages/Discussions";
+import Quizzes from "./pages/Quizzes";
+import QuizTaking from "./pages/QuizTaking";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +39,8 @@ const App = () => (
               <Route path="/posts" element={<Posts />} />
               <Route path="/posts/:slug" element={<PostDetail />} />
               <Route path="/discussions" element={<Discussions />} />
+              <Route path="/quizzes" element={<Quizzes />} />
+              <Route path="/quiz/:quizId" element={<QuizTaking />} />
               <Route path="/podcasts" element={<Podcasts />} />
               <Route path="/announcements" element={<Announcements />} />
               <Route path="/profile" element={<Profile />} />

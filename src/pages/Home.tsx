@@ -7,14 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Music, FileText, Bell, Play } from "lucide-react";
+import { Music, FileText, Bell, Play, MessageSquare, Brain, Podcast } from "lucide-react";
 
 const Home = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <section
-        className="relative min-h-screen flex flex-row justify-center items-center text-primary-foreground py-20 px-4 overflow-hidden"
+        className="relative min-h-screen flex flex-row justify-center items-center text-primary-foreground py-20 px-4 overflow-hidden animate-fade-in"
         style={{
           backgroundImage: `
             linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0)),
@@ -25,7 +25,7 @@ const Home = () => {
         }}
       >
         <div className="container mx-auto text-center relative z-10">
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-md">
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-md animate-scale-in">
             Orthodox Mezmur Hub
           </h1>
           <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90 drop-shadow-sm">
@@ -34,7 +34,7 @@ const Home = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/mezmurs">
-              <Button variant="hero" size="lg" className="gap-2">
+              <Button variant="hero" size="lg" className="gap-2 hover-scale">
                 <Play className="h-5 w-5" />
                 Explore Mezmurs
               </Button>
@@ -42,14 +42,13 @@ const Home = () => {
             <Link to="/posts">
               <Button
                 size="lg"
-                className="bg-background/20 hover:bg-background/30 text-primary-foreground border-2 border-primary-foreground/30"
+                className="bg-background/20 hover:bg-background/30 text-primary-foreground border-2 border-primary-foreground/30 hover-scale"
               >
                 Read Blog
               </Button>
             </Link>
           </div>
         </div>
-        {/* Optional subtle overlay for smooth gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </section>
 
@@ -100,7 +99,7 @@ const Home = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-gold hover:shadow-elegant transition-smooth">
+            <Card className="shadow-gold hover:shadow-elegant transition-smooth hover-scale">
               <CardHeader>
                 <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4">
                   <Bell className="h-6 w-6 text-secondary" />
@@ -115,6 +114,63 @@ const Home = () => {
                 <Link to="/announcements">
                   <Button variant="outline" className="w-full">
                     View Announcements
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-gold hover:shadow-elegant transition-smooth hover-scale">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <MessageSquare className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle>Discussions</CardTitle>
+                <CardDescription>
+                  Share thoughts and engage with the community
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link to="/discussions">
+                  <Button variant="outline" className="w-full">
+                    Join Discussions
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-gold hover:shadow-elegant transition-smooth hover-scale">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4">
+                  <Brain className="h-6 w-6 text-accent" />
+                </div>
+                <CardTitle>Quizzes</CardTitle>
+                <CardDescription>
+                  Test your knowledge with interactive quizzes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link to="/quizzes">
+                  <Button variant="outline" className="w-full">
+                    Take Quizzes
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-gold hover:shadow-elegant transition-smooth hover-scale">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4">
+                  <Podcast className="h-6 w-6 text-secondary" />
+                </div>
+                <CardTitle>Podcasts</CardTitle>
+                <CardDescription>
+                  Watch spiritual teachings and podcasts
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link to="/podcasts">
+                  <Button variant="outline" className="w-full">
+                    Watch Podcasts
                   </Button>
                 </Link>
               </CardContent>

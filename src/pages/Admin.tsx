@@ -29,6 +29,8 @@ import UserManagement from "@/components/admin/UserManagement";
 import AnnouncementManagement from "@/components/admin/AnnouncementManagement";
 import PageManagement from "@/components/admin/PageManagement";
 import PodcastManagement from "@/components/admin/PodcastManagement";
+import QuizManagement from "@/components/admin/QuizManagement";
+import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import {
   Sheet,
   SheetTrigger,
@@ -785,6 +787,20 @@ const Admin = () => {
                 </CardContent>
               </Card>
             )}
+
+            {activeTab === "quizzes" && (
+              <Card className="shadow-elegant">
+                <CardHeader>
+                  <CardTitle>Quiz Management</CardTitle>
+                  <CardDescription>Create and manage quizzes for users</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <QuizManagement />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "analytics" && <AnalyticsDashboard />}
           </div>
         </main>
       </div>

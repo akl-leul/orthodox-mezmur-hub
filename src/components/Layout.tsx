@@ -12,12 +12,14 @@ import {
   Settings,
   Podcast,
   MessageSquare,
+  Brain,
 } from "lucide-react";
 import { Menu } from "lucide-react"; // Import Menu icon
 import { cn } from "@/lib/utils";
 import { Session } from "@supabase/supabase-js";
 import GlobalAudioPlayer from "@/components/GlobalAudioPlayer";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   Sheet,
   SheetTrigger,
@@ -106,6 +108,7 @@ const Layout = () => {
     { path: "/mezmurs", icon: Music, label: "Mezmurs" },
     { path: "/posts", icon: FileText, label: "Blog" },
     { path: "/discussions", icon: MessageSquare, label: "Discussions" },
+    { path: "/quizzes", icon: Brain, label: "Quizzes" },
     { path: "/podcasts", icon: Podcast, label: "Podcasts" },
     { path: "/announcements", icon: Bell, label: "News" },
     { path: "/dashboard", icon: User, label: "Dashboard" },
@@ -213,6 +216,7 @@ const Layout = () => {
                 </Link>
               );
             })}
+            <NotificationBell />
             <ThemeToggle />
             {session && (
               <Button variant="ghost" size="sm" onClick={handleLogout}>
