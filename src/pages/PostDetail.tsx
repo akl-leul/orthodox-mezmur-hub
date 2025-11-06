@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Session } from "@supabase/supabase-js";
+import { SaveButton } from "@/components/SaveButton";
 
 interface Post {
   id: string;
@@ -296,6 +297,7 @@ const PostDetail = () => {
               <MessageCircle className="h-4 w-4" />
               {post.comments.length}
             </Button>
+            <SaveButton contentType="posts" itemId={post.id} showText />
           </div>
 
           <div className="mt-8 space-y-4">

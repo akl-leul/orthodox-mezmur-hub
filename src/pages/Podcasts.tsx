@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { SaveButton } from "@/components/SaveButton";
+import { Podcast as PodcastIcon } from "lucide-react";
 
 interface Podcast {
   id: string;
@@ -84,17 +86,23 @@ export default function Podcasts() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-4xl font-bold mb-8">Podcasts</h1>
+    <div className="container mx-auto py-8 px-4 pb-24 md:pb-8">
+      <div className="flex items-center gap-3 mb-8">
+        <PodcastIcon className="h-8 w-8 text-primary" />
+        <h1 className="text-4xl font-bold">Podcasts</h1>
+      </div>
 
       {podcasts.length === 0 ? (
         <p className="text-muted-foreground">No podcasts available yet.</p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {podcasts.map((podcast) => (
-            <Card key={podcast.id}>
+            <Card key={podcast.id} className="shadow-elegant">
               <CardHeader>
-                <CardTitle>{podcast.title}</CardTitle>
+                <div className="flex items-center justify-between mb-2">
+                  <CardTitle>{podcast.title}</CardTitle>
+                  <SaveButton contentType="podcasts" itemId={podcast.id} showText />
+                </div>
                 {podcast.description && (
                   <CardDescription>{podcast.description}</CardDescription>
                 )}

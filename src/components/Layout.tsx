@@ -11,6 +11,7 @@ import {
   LogOut,
   Settings,
   Podcast,
+  MessageSquare,
 } from "lucide-react";
 import { Menu } from "lucide-react"; // Import Menu icon
 import { cn } from "@/lib/utils";
@@ -104,6 +105,7 @@ const Layout = () => {
     { path: "/", icon: Home, label: "Home" },
     { path: "/mezmurs", icon: Music, label: "Mezmurs" },
     { path: "/posts", icon: FileText, label: "Blog" },
+    { path: "/discussions", icon: MessageSquare, label: "Discussions" },
     { path: "/podcasts", icon: Podcast, label: "Podcasts" },
     { path: "/announcements", icon: Bell, label: "News" },
     { path: "/dashboard", icon: User, label: "Dashboard" },

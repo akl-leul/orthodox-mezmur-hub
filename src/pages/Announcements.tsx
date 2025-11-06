@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { SaveButton } from "@/components/SaveButton";
 
 interface Announcement {
   id: string;
@@ -59,16 +60,19 @@ const Announcements = () => {
           {announcements.map((announcement) => (
             <Card key={announcement.id} className="shadow-elegant">
               <CardHeader>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-12 w-12 rounded-full bg-secondary/10 flex items-center justify-center">
-                    <Bell className="h-6 w-6 text-secondary" />
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-secondary/10 flex items-center justify-center">
+                      <Bell className="h-6 w-6 text-secondary" />
+                    </div>
+                    <div>
+                      <CardTitle>{announcement.title}</CardTitle>
+                      <CardDescription>
+                        {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
+                      </CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle>{announcement.title}</CardTitle>
-                    <CardDescription>
-                      {formatDistanceToNow(new Date(announcement.created_at), { addSuffix: true })}
-                    </CardDescription>
-                  </div>
+                  <SaveButton contentType="announcements" itemId={announcement.id} showText />
                 </div>
               </CardHeader>
               <CardContent>
