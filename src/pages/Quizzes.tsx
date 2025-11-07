@@ -7,6 +7,7 @@ import { Brain, Clock, Trophy, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
+import { useAchievements } from "@/hooks/useAchievements";
 
 interface Quiz {
   id: string;
@@ -28,6 +29,7 @@ const Quizzes = () => {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [userAttempts, setUserAttempts] = useState<Record<string, UserAttempt[]>>({});
+  const { checkAndAwardAchievement } = useAchievements(session?.user.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -54,6 +56,19 @@ const Quizzes = () => {
       if (session) {
         for (const quiz of data || []) {
           fetchUserAttempts(quiz.id);
+        }
+        
+        // Check for quiz completion achievements
+        const { data: attempts } = await supabase
+          .from("user_quiz_attempts")
+          .select("*")
+          .eq("user_id", session.user.id);
+        
+        if (attempts) {
+          await checkAndAwardAchievement("quiz_completion", attempts.length);
+          
+          const highScores = attempts.filter((a) => a.score >= 90).length;
+          await checkAndAwardAchievement("quiz_high_score", highScores);
         }
       }
     } catch (error: any) {

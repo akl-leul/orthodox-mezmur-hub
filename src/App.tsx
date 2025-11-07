@@ -14,12 +14,13 @@ import Announcements from "./pages/Announcements";
 import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
-import NotFound from "./pages/NotFound";
+import Quizzes from "@/pages/Quizzes";
+import QuizTaking from "@/pages/QuizTaking";
+import Leaderboard from "@/pages/Leaderboard";
+import NotFound from "@/pages/NotFound";
 import DynamicPage from "./pages/DynamicPage";
 import Podcasts from "./pages/Podcasts";
 import Discussions from "./pages/Discussions";
-import Quizzes from "./pages/Quizzes";
-import QuizTaking from "./pages/QuizTaking";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/discussions" element={<Discussions />} />
               <Route path="/quizzes" element={<Quizzes />} />
               <Route path="/quiz/:quizId" element={<QuizTaking />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/podcasts" element={<Podcasts />} />
               <Route path="/announcements" element={<Announcements />} />
               <Route path="/profile" element={<Profile />} />

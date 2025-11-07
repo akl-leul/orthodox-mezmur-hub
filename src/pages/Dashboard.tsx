@@ -21,6 +21,9 @@ import {
   Upload,
   Loader2
 } from "lucide-react";
+import { useAchievements } from "@/hooks/useAchievements";
+import { AchievementDisplay } from "@/components/AchievementDisplay";
+import { RecommendationSection } from "@/components/RecommendationSection";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -30,6 +33,9 @@ export default function Dashboard() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
+  
+  // Use achievements hook
+  const { achievements, userAchievements, loading: achievementsLoading } = useAchievements(user?.id);
 
   // Saved content
   const [savedMezmurs, setSavedMezmurs] = useState<any[]>([]);
@@ -543,6 +549,22 @@ export default function Dashboard() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Achievements Section */}
+      <div className="mt-8">
+        <AchievementDisplay
+          achievements={achievements}
+          userAchievements={userAchievements}
+          loading={achievementsLoading}
+        />
+      </div>
+
+      {/* Recommendations Section */}
+      {user && (
+        <div className="mt-8">
+          <RecommendationSection userId={user.id} />
+        </div>
+      )}
     </div>
   );
 }

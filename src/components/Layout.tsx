@@ -13,6 +13,7 @@ import {
   Podcast,
   MessageSquare,
   Brain,
+  TrendingUp,
 } from "lucide-react";
 import { Menu } from "lucide-react"; // Import Menu icon
 import { cn } from "@/lib/utils";
@@ -109,6 +110,7 @@ const Layout = () => {
     { path: "/posts", icon: FileText, label: "Blog" },
     { path: "/discussions", icon: MessageSquare, label: "Discussions" },
     { path: "/quizzes", icon: Brain, label: "Quizzes" },
+    { path: "/leaderboard", icon: TrendingUp, label: "Leaderboard" },
     { path: "/podcasts", icon: Podcast, label: "Podcasts" },
     { path: "/announcements", icon: Bell, label: "News" },
     { path: "/dashboard", icon: User, label: "Dashboard" },

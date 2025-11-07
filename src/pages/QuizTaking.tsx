@@ -156,6 +156,30 @@ const QuizTaking = () => {
 
       if (answersError) throw answersError;
 
+      // Send email notification
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, email")
+          .eq("id", sessionData.session.user.id)
+          .single();
+
+        if (profile) {
+          await supabase.functions.invoke("send-quiz-notification", {
+            body: {
+              email: profile.email,
+              name: profile.name,
+              quizTitle: quiz.title,
+              score,
+              passingScore: quiz.passing_score,
+              totalQuestions,
+              correctAnswers: correctCount,
+            },
+          });
+        }
+      }
+
       toast.success(`Quiz completed! Score: ${score}%`);
       navigate("/quizzes");
     } catch (error: any) {
