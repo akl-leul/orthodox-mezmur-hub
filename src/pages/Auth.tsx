@@ -11,6 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Music } from "lucide-react";
 
@@ -18,7 +25,9 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [gender, setGender] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -53,7 +62,30 @@ const Auth = () => {
         if (error) throw error;
         toast.success("Welcome back!");
       } else {
-        const { error } = await supabase.auth.signUp({
+        // Validate required fields
+        if (!name.trim()) {
+          toast.error("Name is required");
+          setLoading(false);
+          return;
+        }
+        if (!gender) {
+          toast.error("Please select your gender");
+          setLoading(false);
+          return;
+        }
+        if (password.length < 6) {
+          toast.error("Password must be at least 6 characters");
+          setLoading(false);
+          return;
+        }
+        if (password !== confirmPassword) {
+          toast.error("Passwords do not match");
+          setLoading(false);
+          return;
+        }
+
+        // Sign up user
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -61,7 +93,21 @@ const Auth = () => {
             emailRedirectTo: `${window.location.origin}/`,
           },
         });
-        if (error) throw error;
+        if (signUpError) throw signUpError;
+
+        // Create profile with gender
+        if (authData.user) {
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .insert({
+              id: authData.user.id,
+              name: name.trim(),
+              email: email,
+              gender: gender,
+            });
+          if (profileError) throw profileError;
+        }
+
         toast.success("Account created successfully!");
       }
     } catch (error: any) {
@@ -100,6 +146,20 @@ const Auth = () => {
                 />
               </div>
             )}
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Select value={gender} onValueChange={setGender} required={!isLogin}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -123,6 +183,20 @@ const Auth = () => {
                 minLength={6}
               />
             </div>
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required={!isLogin}
+                  minLength={6}
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>

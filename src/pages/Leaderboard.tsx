@@ -8,6 +8,7 @@ import { Trophy, Medal, Award, TrendingUp } from "lucide-react";
 interface LeaderboardEntry {
   user_id: string;
   total_score: number;
+  quiz_points: number;
   quizzes_completed: number;
   average_score: number;
   profile: {
@@ -26,32 +27,38 @@ const Leaderboard = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch all quiz attempts with quiz details
+      const { data: attempts, error: attemptsError } = await supabase
         .from("user_quiz_attempts")
         .select(`
           user_id,
           score,
+          quiz_id,
           profiles!inner(name, profile_pic)
-        `)
-        .order("score", { ascending: false });
+        `);
 
-      if (error) throw error;
+      if (attemptsError) throw attemptsError;
 
       // Aggregate data by user
       const userStats = new Map<string, LeaderboardEntry>();
       
-      data?.forEach((attempt: any) => {
+      attempts?.forEach((attempt: any) => {
         const userId = attempt.user_id;
         const existing = userStats.get(userId);
         
+        // Each quiz is worth exactly 1 point
+        const attemptPoints = 1;
+        
         if (existing) {
           existing.total_score += attempt.score;
+          existing.quiz_points += attemptPoints;
           existing.quizzes_completed += 1;
           existing.average_score = existing.total_score / existing.quizzes_completed;
         } else {
           userStats.set(userId, {
             user_id: userId,
             total_score: attempt.score,
+            quiz_points: attemptPoints,
             quizzes_completed: 1,
             average_score: attempt.score,
             profile: {
@@ -63,7 +70,7 @@ const Leaderboard = () => {
       });
 
       const sortedLeaderboard = Array.from(userStats.values())
-        .sort((a, b) => b.average_score - a.average_score)
+        .sort((a, b) => b.quiz_points - a.quiz_points) // Sort by quiz points
         .slice(0, 50);
 
       setLeaderboard(sortedLeaderboard);
@@ -93,7 +100,10 @@ const Leaderboard = () => {
     <div className="container mx-auto py-8 px-4 pb-24 md:pb-8 animate-fade-in">
       <div className="flex items-center gap-3 mb-8">
         <TrendingUp className="h-8 w-8 text-primary" />
-        <h1 className="text-4xl font-bold">Quiz Leaderboard</h1>
+        <div>
+          <h1 className="text-4xl font-bold">Quiz Points Leaderboard</h1>
+          <p className="text-muted-foreground">Top performers ranked by total quiz points earned</p>
+        </div>
       </div>
 
       <Card className="shadow-elegant">
@@ -130,10 +140,10 @@ const Leaderboard = () => {
 
                   <div className="text-right">
                     <Badge variant="default" className="mb-1">
-                      {Math.round(entry.average_score)}% avg
+                      {entry.quiz_points} points
                     </Badge>
                     <p className="text-xs text-muted-foreground">
-                      {entry.total_score} total points
+                      {Math.round(entry.average_score)}% avg • {entry.quizzes_completed} quiz{entry.quizzes_completed !== 1 ? "zes" : ""}
                     </p>
                   </div>
                 </div>

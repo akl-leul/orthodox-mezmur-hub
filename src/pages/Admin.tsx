@@ -9,6 +9,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Settings,
   Users,
   Music,
@@ -27,7 +35,7 @@ import EnhancedMezmurManagement from "@/components/admin/EnhancedMezmurManagemen
 import EnhancedPostManagement from "@/components/admin/EnhancedPostManagement";
 import UserManagement from "@/components/admin/UserManagement";
 import AnnouncementManagement from "@/components/admin/AnnouncementManagement";
-import PageManagement from "@/components/admin/PageManagement";
+import AdminPageManagement from "@/components/admin/AdminPageManagement";
 import PodcastManagement from "@/components/admin/PodcastManagement";
 import QuizManagement from "@/components/admin/QuizManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
@@ -771,7 +779,7 @@ const Admin = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <PageManagement />
+                  <AdminPageManagement />
                 </CardContent>
               </Card>
             )}

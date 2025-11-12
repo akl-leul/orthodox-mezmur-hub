@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Clock, CheckCircle } from "lucide-react";
+import { useAchievements } from "@/hooks/useAchievements";
 
 interface Quiz {
   id: string;
@@ -39,6 +40,10 @@ const QuizTaking = () => {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [startTime] = useState(Date.now());
+  
+  // Get user ID for achievement checking
+  const [userId, setUserId] = useState<string | null>(null);
+  const { checkAndAwardAchievement } = useAchievements(userId || undefined);
 
   useEffect(() => {
     if (quizId) {
@@ -64,6 +69,12 @@ const QuizTaking = () => {
 
   const fetchQuiz = async () => {
     try {
+      // Get user session first
+      const { data: session } = await supabase.auth.getSession();
+      if (session.session?.user) {
+        setUserId(session.session.user.id);
+      }
+
       const { data: quizData, error: quizError } = await supabase
         .from("quizzes")
         .select("*")
@@ -95,6 +106,7 @@ const QuizTaking = () => {
         setAnswers((prev) => ({ ...prev, [question.id]: answersData || [] }));
       }
     } catch (error: any) {
+      console.error("Failed to load quiz:", error);
       toast.error("Failed to load quiz");
       navigate("/quizzes");
     }
@@ -126,21 +138,71 @@ const QuizTaking = () => {
       const score = Math.round((correctCount / totalQuestions) * 100);
       const timeTaken = Math.floor((Date.now() - startTime) / 1000);
 
-      // Save attempt
-      const { data: attemptData, error: attemptError } = await supabase
-        .from("user_quiz_attempts")
-        .insert({
-          user_id: session.session.user.id,
-          quiz_id: quizId,
-          score,
-          total_questions: totalQuestions,
-          correct_answers: correctCount,
-          time_taken: timeTaken,
-        })
-        .select()
-        .single();
+      console.log("Submitting quiz attempt:", {
+        user_id: session.session.user.id,
+        quiz_id: quizId,
+        score,
+        total_questions: totalQuestions,
+        correct_answers: correctCount,
+        time_taken: timeTaken,
+      });
 
-      if (attemptError) throw attemptError;
+      // Save attempt
+      let attemptData;
+      const attemptError = await (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("user_quiz_attempts")
+            .insert({
+              user_id: session.session.user.id,
+              quiz_id: quizId,
+              score,
+              total_questions: totalQuestions,
+              correct_answers: correctCount,
+              time_taken: timeTaken,
+            })
+            .select()
+            .single();
+          
+          attemptData = data;
+          return error;
+        } catch (err) {
+          return err;
+        }
+      })();
+
+      if (attemptError) {
+        console.error("Attempt insert error:", attemptError);
+        
+        // If it's a trigger-related error, try the safe function
+        if (attemptError.message?.includes('missing FROM-clause entry for table') || 
+            attemptError.message?.includes('uqa') ||
+            attemptError.code === 'P0001') {
+          console.log("Attempting to insert using safe function...");
+          
+          // Use the safe function that bypasses triggers
+          const { data: safeData, error: safeError } = await supabase
+            .rpc('insert_quiz_attempt_safe', {
+              p_user_id: session.session.user.id,
+              p_quiz_id: quizId,
+              p_score: score,
+              p_total_questions: totalQuestions,
+              p_correct_answers: correctCount,
+              p_time_taken: timeTaken,
+            });
+          
+          if (safeError) {
+            console.error("Safe insert failed:", safeError);
+            throw safeError;
+          }
+          
+          attemptData = safeData[0]; // RPC returns array
+        } else {
+          throw attemptError;
+        }
+      }
+
+      console.log("Quiz attempt saved successfully:", attemptData);
 
       // Save individual answers
       const answersToInsert = answeredQuestions.map(([questionId, answerId]) => ({
@@ -150,40 +212,67 @@ const QuizTaking = () => {
         is_correct: answers[questionId]?.find((a) => a.id === answerId)?.is_correct || false,
       }));
 
+      console.log("Saving answers:", answersToInsert);
+
       const { error: answersError } = await supabase
         .from("user_quiz_answers")
         .insert(answersToInsert);
 
-      if (answersError) throw answersError;
+      if (answersError) {
+        console.error("Answers insert error:", answersError);
+        throw answersError;
+      }
 
-      // Send email notification
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("name, email")
-          .eq("id", sessionData.session.user.id)
-          .single();
+      console.log("Quiz answers saved successfully");
 
-        if (profile) {
-          await supabase.functions.invoke("send-quiz-notification", {
-            body: {
-              email: profile.email,
-              name: profile.name,
-              quizTitle: quiz.title,
-              score,
-              passingScore: quiz.passing_score,
-              totalQuestions,
-              correctAnswers: correctCount,
-            },
-          });
+      // Check for new achievements based on quiz points
+      if (checkAndAwardAchievement && userId) {
+        // Get user's total quiz points after this submission
+        const { data: userAttempts } = await supabase
+          .from("user_quiz_attempts")
+          .select("quiz_id")
+          .eq("user_id", userId);
+        
+        const totalQuizPoints = userAttempts?.length || 0;
+        console.log("Checking achievements for quiz points:", totalQuizPoints);
+        
+        checkAndAwardAchievement('quiz_points', totalQuizPoints);
+      }
+
+      // Send email notification (make it non-blocking)
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("name, email")
+            .eq("id", sessionData.session.user.id)
+            .single();
+
+          if (profile) {
+            await supabase.functions.invoke("send-quiz-notification", {
+              body: {
+                email: profile.email,
+                name: profile.name,
+                quizTitle: quiz.title,
+                score,
+                passingScore: quiz.passing_score,
+                totalQuestions,
+                correctAnswers: correctCount,
+              },
+            });
+          }
         }
+      } catch (notificationError) {
+        console.warn("Email notification failed:", notificationError);
+        // Don't fail the submission if email fails
       }
 
       toast.success(`Quiz completed! Score: ${score}%`);
       navigate("/quizzes");
     } catch (error: any) {
-      toast.error("Failed to submit quiz");
+      console.error("Quiz submission failed:", error);
+      toast.error(`Failed to submit quiz: ${error.message || "Unknown error"}`);
     } finally {
       setSubmitting(false);
     }

@@ -80,19 +80,20 @@ const PostDetail = () => {
           `
           *,
           profiles(name, profile_pic),
-          likes(id),
-          comments(id)
+          likes(id, user_id),
+          comments(id, content, approved, created_at, user_id, profiles(name, profile_pic))
         `,
         )
         .eq("slug", slug)
-        .maybeSingle();
+        .single();
 
       if (error) throw error;
-      if (!data) {
-        toast.error("Post not found");
-        navigate("/posts");
-        return;
+
+      // Filter comments to only show approved ones
+      if (data.comments) {
+        data.comments = data.comments.filter((comment: any) => comment.approved && !comment.suspended);
       }
+
       setPost(data);
       fetchComments(data.id);
     } catch (error: any) {
@@ -110,6 +111,8 @@ const PostDetail = () => {
         .from("comments")
         .select(`*, profiles(name, profile_pic)`)
         .eq("post_id", postId)
+        .eq("approved", true)
+        .eq("suspended", false)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -127,7 +130,8 @@ const PostDetail = () => {
       return;
     }
 
-    const hasLiked = post.likes.some(() => true);
+    // Check if current user has liked this post
+    const hasLiked = post.likes.some((like: any) => like.user_id === session.user.id);
 
     try {
       if (hasLiked) {
@@ -163,11 +167,12 @@ const PostDetail = () => {
         post_id: post.id,
         user_id: session.user.id,
         content: newComment.trim(),
-        approved: true,
+        approved: false, // Comments require approval by default
+        suspended: false
       });
 
       if (error) throw error;
-      toast.success("Comment added!");
+      toast.success("Comment submitted for approval!");
       setNewComment("");
       fetchComments(post.id);
       fetchPost();
@@ -217,6 +222,8 @@ const PostDetail = () => {
     return null;
   }
 
+  // Check if current user has liked this post
+  const hasLiked = session && post?.likes.some((like: any) => like.user_id === session.user.id);
   const isAuthor = session?.user.id === post.author_id;
 
   return (
@@ -289,7 +296,7 @@ const PostDetail = () => {
               className="gap-2"
             >
               <Heart
-                className={`h-4 w-4 ${post.likes.length > 0 ? "fill-current text-destructive" : ""}`}
+                className={`h-4 w-4 ${hasLiked ? "fill-current text-destructive" : ""}`}
               />
               {post.likes.length}
             </Button>

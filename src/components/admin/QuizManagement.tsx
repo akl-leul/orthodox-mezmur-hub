@@ -46,6 +46,23 @@ export default function QuizManagement() {
   const [questions, setQuestions] = useState<Record<string, Question[]>>({});
   const [answers, setAnswers] = useState<Record<string, Answer[]>>({});
   const [expandedQuiz, setExpandedQuiz] = useState<string | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<{
+    quizId: string;
+    questionId: string;
+  } | null>(null);
+  const [newQuestion, setNewQuestion] = useState({
+    quiz_id: "",
+    question: "",
+    points: "1",
+    tempAnswers: [{ answer_text: "", is_correct: false }], // For new questions
+  });
+  const [editingAnswer, setEditingAnswer] = useState<{
+    questionId: string;
+    answerId: string;
+  } | null>(null);
+  const [tempAnswers, setTempAnswers] = useState<
+    Record<string, { id?: string; answer_text: string; is_correct: boolean }[]>
+  >({}); // For editing existing questions' answers
 
   useEffect(() => {
     fetchQuizzes();
@@ -60,8 +77,10 @@ export default function QuizManagement() {
 
       if (error) throw error;
       setQuizzes(data || []);
-    } catch (error: any) {
-      toast.error("Failed to load quizzes");
+    } catch (error: unknown) {
+      toast.error(
+        `Failed to load quizzes: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -82,8 +101,10 @@ export default function QuizManagement() {
           fetchAnswers(question.id);
         }
       }
-    } catch (error: any) {
-      toast.error("Failed to load questions");
+    } catch (error: unknown) {
+      toast.error(
+        `Failed to load questions: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -97,8 +118,10 @@ export default function QuizManagement() {
 
       if (error) throw error;
       setAnswers((prev) => ({ ...prev, [questionId]: data || [] }));
-    } catch (error: any) {
-      toast.error("Failed to load answers");
+    } catch (error: unknown) {
+      toast.error(
+        `Failed to load answers: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -120,10 +143,17 @@ export default function QuizManagement() {
 
       if (error) throw error;
       toast.success("Quiz created");
-      setNewQuiz({ title: "", description: "", time_limit: "", passing_score: "70" });
+      setNewQuiz({
+        title: "",
+        description: "",
+        time_limit: "",
+        passing_score: "70",
+      });
       fetchQuizzes();
-    } catch (error: any) {
-      toast.error("Failed to create quiz");
+    } catch (error: unknown) {
+      toast.error(
+        `Failed to create quiz: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -135,8 +165,10 @@ export default function QuizManagement() {
       if (error) throw error;
       toast.success("Quiz deleted");
       fetchQuizzes();
-    } catch (error: any) {
-      toast.error("Failed to delete quiz");
+    } catch (error: unknown) {
+      toast.error(
+        `Failed to delete quiz: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -150,18 +182,287 @@ export default function QuizManagement() {
       if (error) throw error;
       toast.success(quiz.published ? "Quiz unpublished" : "Quiz published");
       fetchQuizzes();
-    } catch (error: any) {
-      toast.error("Failed to update quiz");
+    } catch (error: unknown) {
+      toast.error(
+        `Failed to update quiz: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleAddQuestion = async (quizId: string) => {
+    if (!newQuestion.question.trim()) {
+      toast.error("Question text is required.");
+      return;
+    }
+    const correctAnswers = newQuestion.tempAnswers.filter((a) => a.is_correct);
+    if (correctAnswers.length === 0) {
+      toast.error("At least one correct answer is required.");
+      return;
+    }
+
+    try {
+      const { data: questionData, error: questionError } = await supabase
+        .from("quiz_questions")
+        .insert({
+          quiz_id: quizId,
+          question: newQuestion.question,
+          points: parseInt(newQuestion.points),
+          question_order: (questions[quizId]?.length || 0) + 1, // Simple order for now
+        })
+        .select()
+        .single();
+
+      if (questionError) throw questionError;
+
+      const answersToInsert = newQuestion.tempAnswers.map((answer, index) => ({
+        question_id: questionData.id,
+        answer_text: answer.answer_text,
+        is_correct: answer.is_correct,
+        answer_order: index + 1,
+      }));
+
+      const { error: answersError } = await supabase
+        .from("quiz_answers")
+        .insert(answersToInsert);
+
+      if (answersError) throw answersError;
+
+      toast.success("Question and answers added successfully!");
+      setNewQuestion({
+        quiz_id: "",
+        question: "",
+        points: "1",
+        tempAnswers: [{ answer_text: "", is_correct: false }],
+      });
+      fetchQuestions(quizId); // Re-fetch questions for the current quiz
+    } catch (error: unknown) {
+      console.error("Error adding question:", error);
+      toast.error(
+        `Failed to add question: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleUpdateQuestion = async (quizId: string, question: Question) => {
+    // Logic for updating question text and points
+    try {
+      const { error } = await supabase
+        .from("quiz_questions")
+        .update({ question: question.question, points: question.points })
+        .eq("id", question.id);
+
+      if (error) throw error;
+      toast.success("Question updated successfully!");
+      setEditingQuestion(null);
+      fetchQuestions(quizId);
+    } catch (error: unknown) {
+      console.error("Error updating question:", error);
+      toast.error(
+        `Failed to update question: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleDeleteQuestion = async (quizId: string, questionId: string) => {
+    if (
+      !confirm(
+        "Are you sure you want to delete this question and all its answers?",
+      )
+    ) {
+      return;
+    }
+    try {
+      // Supabase supports cascading deletes if configured, otherwise delete answers first
+      const { error: answersError } = await supabase
+        .from("quiz_answers")
+        .delete()
+        .eq("question_id", questionId);
+      if (answersError) throw answersError;
+
+      const { error: questionError } = await supabase
+        .from("quiz_questions")
+        .delete()
+        .eq("id", questionId);
+      if (questionError) throw questionError;
+
+      toast.success("Question deleted successfully!");
+      fetchQuestions(quizId);
+    } catch (error: unknown) {
+      console.error("Error deleting question:", error);
+      toast.error(
+        `Failed to delete question: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleAddAnswer = async (
+    questionId: string,
+    answerText: string,
+    isCorrect: boolean,
+  ) => {
+    if (!answerText.trim()) {
+      toast.error("Answer text cannot be empty.");
+      return;
+    }
+    try {
+      const { error } = await supabase.from("quiz_answers").insert({
+        question_id: questionId,
+        answer_text: answerText,
+        is_correct: isCorrect,
+        answer_order: (answers[questionId]?.length || 0) + 1,
+      });
+
+      if (error) throw error;
+      toast.success("Answer added!");
+      fetchAnswers(questionId);
+    } catch (error: unknown) {
+      console.error("Error adding answer:", error);
+      toast.error(
+        `Failed to add answer: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleUpdateAnswer = async (answer: Answer) => {
+    if (!answer.answer_text.trim()) {
+      toast.error("Answer text cannot be empty.");
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("quiz_answers")
+        .update({
+          answer_text: answer.answer_text,
+          is_correct: answer.is_correct,
+        })
+        .eq("id", answer.id);
+
+      if (error) throw error;
+      toast.success("Answer updated!");
+      setEditingAnswer(null);
+      fetchAnswers(answer.question_id);
+    } catch (error: unknown) {
+      console.error("Error updating answer:", error);
+      toast.error(
+        `Failed to update answer: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleDeleteAnswer = async (questionId: string, answerId: string) => {
+    if (!confirm("Are you sure you want to delete this answer?")) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("quiz_answers")
+        .delete()
+        .eq("id", answerId);
+
+      if (error) throw error;
+      toast.success("Answer deleted!");
+      fetchAnswers(questionId);
+    } catch (error: unknown) {
+      console.error("Error deleting answer:", error);
+      toast.error(
+        `Failed to delete answer: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleAddAnswerField = (questionId?: string) => {
+    if (questionId) {
+      // For existing questions being edited
+      setTempAnswers((prev) => ({
+        ...prev,
+        [questionId]: [
+          ...(prev[questionId] || []),
+          { answer_text: "", is_correct: false },
+        ],
+      }));
+    } else {
+      // For new questions
+      setNewQuestion((prev) => ({
+        ...prev,
+        tempAnswers: [
+          ...prev.tempAnswers,
+          { answer_text: "", is_correct: false },
+        ],
+      }));
+    }
+  };
+
+  const handleAnswerTextChange = (
+    value: string,
+    index: number,
+    questionId?: string,
+  ) => {
+    if (questionId) {
+      setTempAnswers((prev) => {
+        const updatedAnswers = [...(prev[questionId] || [])];
+        updatedAnswers[index].answer_text = value;
+        return { ...prev, [questionId]: updatedAnswers };
+      });
+    } else {
+      setNewQuestion((prev) => {
+        const updatedAnswers = [...prev.tempAnswers];
+        updatedAnswers[index].answer_text = value;
+        return { ...prev, tempAnswers: updatedAnswers };
+      });
+    }
+  };
+
+  const handleCorrectAnswerChange = (
+    index: number,
+    checked: boolean,
+    questionId?: string,
+  ) => {
+    if (questionId) {
+      setTempAnswers((prev) => {
+        const updatedAnswers = [...(prev[questionId] || [])];
+        updatedAnswers[index].is_correct = checked;
+        return { ...prev, [questionId]: updatedAnswers };
+      });
+    } else {
+      setNewQuestion((prev) => {
+        const updatedAnswers = [...prev.tempAnswers];
+        updatedAnswers[index].is_correct = checked;
+        return { ...prev, tempAnswers: updatedAnswers };
+      });
+    }
+  };
+
+  const handleDeleteAnswerField = (index: number, questionId?: string) => {
+    if (questionId) {
+      setTempAnswers((prev) => {
+        const updatedAnswers = [...(prev[questionId] || [])];
+        updatedAnswers.splice(index, 1);
+        return { ...prev, [questionId]: updatedAnswers };
+      });
+    } else {
+      setNewQuestion((prev) => {
+        const updatedAnswers = [...prev.tempAnswers];
+        updatedAnswers.splice(index, 1);
+        return { ...prev, tempAnswers: updatedAnswers };
+      });
     }
   };
 
   const toggleQuizExpansion = (quizId: string) => {
     if (expandedQuiz === quizId) {
       setExpandedQuiz(null);
+      setEditingQuestion(null); // Close any open question edits
     } else {
       setExpandedQuiz(quizId);
       if (!questions[quizId]) {
         fetchQuestions(quizId);
+      } else {
+        // If questions are already loaded, ensure answers are fetched for all of them
+        questions[quizId].forEach((question) => {
+          if (!answers[question.id]) {
+            fetchAnswers(question.id);
+          }
+        });
       }
     }
   };
@@ -177,7 +478,9 @@ export default function QuizManagement() {
             <Label>Title *</Label>
             <Input
               value={newQuiz.title}
-              onChange={(e) => setNewQuiz({ ...newQuiz, title: e.target.value })}
+              onChange={(e) =>
+                setNewQuiz({ ...newQuiz, title: e.target.value })
+              }
               placeholder="Quiz title..."
             />
           </div>
@@ -185,7 +488,9 @@ export default function QuizManagement() {
             <Label>Description</Label>
             <Textarea
               value={newQuiz.description}
-              onChange={(e) => setNewQuiz({ ...newQuiz, description: e.target.value })}
+              onChange={(e) =>
+                setNewQuiz({ ...newQuiz, description: e.target.value })
+              }
               placeholder="Quiz description..."
               rows={3}
             />
@@ -196,7 +501,9 @@ export default function QuizManagement() {
               <Input
                 type="number"
                 value={newQuiz.time_limit}
-                onChange={(e) => setNewQuiz({ ...newQuiz, time_limit: e.target.value })}
+                onChange={(e) =>
+                  setNewQuiz({ ...newQuiz, time_limit: e.target.value })
+                }
                 placeholder="No limit"
               />
             </div>
@@ -205,7 +512,9 @@ export default function QuizManagement() {
               <Input
                 type="number"
                 value={newQuiz.passing_score}
-                onChange={(e) => setNewQuiz({ ...newQuiz, passing_score: e.target.value })}
+                onChange={(e) =>
+                  setNewQuiz({ ...newQuiz, passing_score: e.target.value })
+                }
                 placeholder="70"
               />
             </div>
@@ -226,7 +535,9 @@ export default function QuizManagement() {
                 <div className="flex-1">
                   <CardTitle>{quiz.title}</CardTitle>
                   {quiz.description && (
-                    <p className="text-sm text-muted-foreground mt-1">{quiz.description}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {quiz.description}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -256,9 +567,410 @@ export default function QuizManagement() {
             </CardHeader>
             {expandedQuiz === quiz.id && (
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Questions management will be added here. For now, use direct database access to add questions and answers.
-                </p>
+                <div className="mt-4 space-y-4">
+                  <h4 className="text-md font-semibold mb-2">
+                    Questions for {quiz.title}
+                  </h4>
+
+                  {/* Add New Question Form */}
+                  <Card className="p-4 bg-accent/10">
+                    <h5 className="font-semibold mb-2">Add New Question</h5>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor={`new-question-text-${quiz.id}`}>
+                          Question Text *
+                        </Label>
+                        <Textarea
+                          id={`new-question-text-${quiz.id}`}
+                          value={newQuestion.question}
+                          onChange={(e) =>
+                            setNewQuestion({
+                              ...newQuestion,
+                              question: e.target.value,
+                            })
+                          }
+                          placeholder="Type your question here..."
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`new-question-points-${quiz.id}`}>
+                          Points
+                        </Label>
+                        <Input
+                          id={`new-question-points-${quiz.id}`}
+                          type="number"
+                          value={newQuestion.points}
+                          onChange={(e) =>
+                            setNewQuestion({
+                              ...newQuestion,
+                              points: e.target.value,
+                            })
+                          }
+                          min="1"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Answers * (Select at least one correct)</Label>
+                        {newQuestion.tempAnswers.map((answer, ansIndex) => (
+                          <div
+                            key={ansIndex}
+                            className="flex items-center space-x-2"
+                          >
+                            <Input
+                              value={answer.answer_text}
+                              onChange={(e) =>
+                                handleAnswerTextChange(e.target.value, ansIndex)
+                              }
+                              placeholder={`Answer ${ansIndex + 1}`}
+                            />
+                            <Switch
+                              checked={answer.is_correct}
+                              onCheckedChange={(checked) =>
+                                handleCorrectAnswerChange(ansIndex, checked)
+                              }
+                              id={`new-answer-correct-${ansIndex}`}
+                            />
+                            <Label htmlFor={`new-answer-correct-${ansIndex}`}>
+                              Correct
+                            </Label>
+                            {newQuestion.tempAnswers.length > 1 && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() =>
+                                  handleDeleteAnswerField(ansIndex)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddAnswerField()}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Add Answer Option
+                        </Button>
+                      </div>
+                      <Button
+                        onClick={() => handleAddQuestion(quiz.id)}
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" /> Add Question
+                      </Button>
+                    </div>
+                  </Card>
+
+                  {/* Existing Questions List */}
+                  {questions[quiz.id]?.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No questions added yet for this quiz.
+                    </p>
+                  )}
+                  {questions[quiz.id]?.map((question) => (
+                    <Card key={question.id} className="p-4">
+                      {editingQuestion?.questionId === question.id ? (
+                        // Edit Question Form
+                        <div className="space-y-3">
+                          <div>
+                            <Label
+                              htmlFor={`edit-question-text-${question.id}`}
+                            >
+                              Question Text *
+                            </Label>
+                            <Textarea
+                              id={`edit-question-text-${question.id}`}
+                              value={question.question}
+                              onChange={(e) =>
+                                setQuestions((prev) => ({
+                                  ...prev,
+                                  [quiz.id]: prev[quiz.id].map((q) =>
+                                    q.id === question.id
+                                      ? { ...q, question: e.target.value }
+                                      : q,
+                                  ),
+                                }))
+                              }
+                              rows={2}
+                            />
+                          </div>
+                          <div>
+                            <Label
+                              htmlFor={`edit-question-points-${question.id}`}
+                            >
+                              Points
+                            </Label>
+                            <Input
+                              id={`edit-question-points-${question.id}`}
+                              type="number"
+                              value={question.points}
+                              onChange={(e) =>
+                                setQuestions((prev) => ({
+                                  ...prev,
+                                  [quiz.id]: prev[quiz.id].map((q) =>
+                                    q.id === question.id
+                                      ? {
+                                          ...q,
+                                          points: parseInt(e.target.value),
+                                        }
+                                      : q,
+                                  ),
+                                }))
+                              }
+                              min="1"
+                            />
+                          </div>
+                          {/* Answers for editing existing question */}
+                          <div className="space-y-2">
+                            <Label>
+                              Answers * (Select at least one correct)
+                            </Label>
+                            {(answers[question.id] || []).map(
+                              (answer, ansIndex) => (
+                                <div
+                                  key={answer.id}
+                                  className="flex items-center space-x-2"
+                                >
+                                  {editingAnswer?.answerId === answer.id ? (
+                                    <>
+                                      <Input
+                                        value={answer.answer_text}
+                                        onChange={(e) =>
+                                          setAnswers((prev) => ({
+                                            ...prev,
+                                            [question.id]: prev[
+                                              question.id
+                                            ].map((a) =>
+                                              a.id === answer.id
+                                                ? {
+                                                    ...a,
+                                                    answer_text: e.target.value,
+                                                  }
+                                                : a,
+                                            ),
+                                          }))
+                                        }
+                                        placeholder={`Answer ${ansIndex + 1}`}
+                                      />
+                                      <Switch
+                                        checked={answer.is_correct}
+                                        onCheckedChange={(checked) =>
+                                          setAnswers((prev) => ({
+                                            ...prev,
+                                            [question.id]: prev[
+                                              question.id
+                                            ].map((a) =>
+                                              a.id === answer.id
+                                                ? { ...a, is_correct: checked }
+                                                : a,
+                                            ),
+                                          }))
+                                        }
+                                        id={`edit-answer-correct-${answer.id}`}
+                                      />
+                                      <Label
+                                        htmlFor={`edit-answer-correct-${answer.id}`}
+                                      >
+                                        Correct
+                                      </Label>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleUpdateAnswer(answer)
+                                        }
+                                      >
+                                        <Save className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setEditingAnswer(null)}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Input
+                                        value={answer.answer_text}
+                                        disabled
+                                        className="flex-1"
+                                      />
+                                      <div className="flex items-center space-x-1">
+                                        <Switch
+                                          checked={answer.is_correct}
+                                          disabled
+                                          id={`display-answer-correct-${answer.id}`}
+                                        />
+                                        <Label
+                                          htmlFor={`display-answer-correct-${answer.id}`}
+                                        >
+                                          Correct
+                                        </Label>
+                                      </div>
+
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          setEditingAnswer({
+                                            questionId: question.id,
+                                            answerId: answer.id,
+                                          })
+                                        }
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleDeleteAnswer(
+                                            question.id,
+                                            answer.id,
+                                          )
+                                        }
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              ),
+                            )}
+                            <div className="flex items-center space-x-2">
+                              <Input
+                                value={
+                                  tempAnswers[question.id]?.[0]?.answer_text ||
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  handleAnswerTextChange(
+                                    e.target.value,
+                                    0,
+                                    question.id,
+                                  )
+                                }
+                                placeholder="Add new answer..."
+                              />
+                              <Switch
+                                checked={
+                                  tempAnswers[question.id]?.[0]?.is_correct ||
+                                  false
+                                }
+                                onCheckedChange={(checked) =>
+                                  handleCorrectAnswerChange(
+                                    0,
+                                    checked,
+                                    question.id,
+                                  )
+                                }
+                                id={`add-answer-correct-${question.id}`}
+                              />
+                              <Label
+                                htmlFor={`add-answer-correct-${question.id}`}
+                              >
+                                Correct
+                              </Label>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleAddAnswer(
+                                    question.id,
+                                    tempAnswers[question.id]?.[0]
+                                      ?.answer_text || "",
+                                    tempAnswers[question.id]?.[0]?.is_correct ||
+                                      false,
+                                  )
+                                }
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() =>
+                                handleUpdateQuestion(quiz.id, question)
+                              }
+                              className="w-full"
+                            >
+                              <Save className="h-4 w-4 mr-2" /> Save Question
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => setEditingQuestion(null)}
+                              className="w-full"
+                            >
+                              <X className="h-4 w-4 mr-2" /> Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Display Question
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <h5 className="font-semibold">
+                              {question.question} ({question.points} points)
+                            </h5>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingQuestion({
+                                    quizId: quiz.id,
+                                    questionId: question.id,
+                                  });
+                                  // Initialize tempAnswers for this question with an empty new answer slot
+                                  setTempAnswers((prev) => ({
+                                    ...prev,
+                                    [question.id]: [
+                                      { answer_text: "", is_correct: false },
+                                    ],
+                                  }));
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  handleDeleteQuestion(quiz.id, question.id)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <ul className="list-disc pl-5 text-sm text-muted-foreground mt-2">
+                            {answers[question.id]?.map((answer) => (
+                              <li
+                                key={answer.id}
+                                className={
+                                  answer.is_correct
+                                    ? "font-medium text-green-600"
+                                    : ""
+                                }
+                              >
+                                {answer.answer_text}{" "}
+                                {answer.is_correct && "(Correct)"}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
               </CardContent>
             )}
           </Card>
