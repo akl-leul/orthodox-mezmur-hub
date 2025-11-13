@@ -39,6 +39,9 @@ import AdminPageManagement from "@/components/admin/AdminPageManagement";
 import PodcastManagement from "@/components/admin/PodcastManagement";
 import QuizManagement from "@/components/admin/QuizManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
+import DiscussionApproval from "@/components/admin/DiscussionApproval";
+import Leaderboard from "@/components/common/Leaderboard";
+import LeaderboardTest from "@/components/common/LeaderboardTest";
 import {
   Sheet,
   SheetTrigger,
@@ -797,13 +800,49 @@ const Admin = () => {
             )}
 
             {activeTab === "quizzes" && (
+              <div className="space-y-6">
+                <Card className="shadow-elegant">
+                  <CardHeader>
+                    <CardTitle>Quiz Management</CardTitle>
+                    <CardDescription>Create and manage quizzes for users</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <QuizManagement />
+                  </CardContent>
+                </Card>
+                
+                <Card className="shadow-elegant">
+                  <CardHeader>
+                    <CardTitle>Quiz Points Leaderboard</CardTitle>
+                    <CardDescription>Top performers ranked by total quiz points earned</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Leaderboard limit={10} showTitle={false} />
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-elegant">
+                  <CardHeader>
+                    <CardTitle>Leaderboard Diagnostics</CardTitle>
+                    <CardDescription>Test leaderboard functionality and database access</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <LeaderboardTest />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === "discussions" && (
               <Card className="shadow-elegant">
                 <CardHeader>
-                  <CardTitle>Quiz Management</CardTitle>
-                  <CardDescription>Create and manage quizzes for users</CardDescription>
+                  <CardTitle>Discussion Approval</CardTitle>
+                  <CardDescription>
+                    Review and approve user discussions before they go live
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <QuizManagement />
+                  <DiscussionApproval />
                 </CardContent>
               </Card>
             )}

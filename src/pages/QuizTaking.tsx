@@ -227,13 +227,14 @@ const QuizTaking = () => {
 
       // Check for new achievements based on quiz points
       if (checkAndAwardAchievement && userId) {
-        // Get user's total quiz points after this submission
-        const { data: userAttempts } = await supabase
-          .from("user_quiz_attempts")
-          .select("quiz_id")
-          .eq("user_id", userId);
+        // Get user's total quiz points from user_points table
+        const { data: userPointsData } = await supabase
+          .from("user_points" as any)
+          .select("quiz_points")
+          .eq("user_id", userId)
+          .single();
         
-        const totalQuizPoints = userAttempts?.length || 0;
+        const totalQuizPoints = (userPointsData as any)?.quiz_points || 0;
         console.log("Checking achievements for quiz points:", totalQuizPoints);
         
         checkAndAwardAchievement('quiz_points', totalQuizPoints);

@@ -124,7 +124,7 @@ const Auth = () => {
           <div className="mb-4 flex justify-center">
             <Music className="h-16 w-16 text-primary" />
           </div>
-          <CardTitle className="text-3xl">Orthodox Mezmur Hub</CardTitle>
+          <CardTitle className="text-3xl">OrthoMez</CardTitle>
           <CardDescription>
             {isLogin
               ? "Welcome back! Sign in to continue"

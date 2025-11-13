@@ -26,7 +26,7 @@ const Home = () => {
       >
         <div className="container mx-auto text-center relative z-10">
           <h1 className="text-4xl md:text-6xl font-bold mb-4 drop-shadow-md animate-scale-in">
-            Orthodox Mezmur Hub
+            OrthoMez
           </h1>
           <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto opacity-90 drop-shadow-sm">
             Experience the beauty of Ethiopian Orthodox spiritual music. Listen

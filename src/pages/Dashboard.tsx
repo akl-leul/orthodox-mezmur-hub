@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
+import UserMezmurManager from "@/components/common/UserMezmurManager";
 import { 
   User, 
   Settings, 
@@ -29,6 +34,7 @@ import {
   Activity,
   Upload,
   Loader2,
+  Menu,
   Trophy,
   Image,
   MessageSquare,
@@ -50,12 +56,36 @@ function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
   
+  // Sidebar state
+  const [activeSection, setActiveSection] = useState("profile");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+  
   // Profile picture cropping state
   const [showCropper, setShowCropper] = useState(false);
   const [imageForCrop, setImageForCrop] = useState<string | null>(null);
   
   // Use achievements hook
   const { achievements, userAchievements, loading: achievementsLoading, checkAndAwardAchievement } = useAchievements(user?.id);
+
+  // Sidebar menu items
+  const menuItems = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "myposts", label: "My Posts", icon: FileText },
+    { id: "quizhistory", label: "Quiz History", icon: Trophy },
+    { id: "mezmurs", label: "My Mezmurs", icon: Music },
+    { id: "achievements", label: "Achievements", icon: Trophy },
+    { id: "saved", label: "Saved", icon: BookmarkIcon },
+    { id: "activity", label: "Activity", icon: Activity },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
 
   // Saved content
   const [savedMezmurs, setSavedMezmurs] = useState<any[]>([]);
@@ -125,7 +155,6 @@ function Dashboard() {
         name: data.name || "",
         email: data.email || "",
         bio: data.bio || "",
-        gender: data.gender || "",
       });
 
       if (data.profile_pic) {
@@ -200,39 +229,67 @@ function Dashboard() {
 
   const fetchQuizStats = async (userId: string) => {
     try {
-      // Fetch user's quiz attempts
-      const { data: quizAttempts, error: quizError } = await supabase
-        .from("user_quiz_attempts")
-        .select("score, total_questions, correct_answers, quiz_id")
-        .eq("user_id", userId);
+      // Try to get stats from user_points table first
+      const { data: userPoints, error: pointsError } = await (supabase as any)
+        .from("user_points")
+        .select("quiz_points, total_points, quizzes_completed, average_score, highest_score")
+        .eq("user_id", userId)
+        .single();
 
-      if (quizError) throw quizError;
+      if (pointsError) {
+        console.log("User points not found, calculating from attempts...");
+        
+        // Fallback: Fetch user's quiz attempts and calculate
+        const { data: quizAttempts, error: quizError } = await supabase
+          .from("user_quiz_attempts")
+          .select("score, total_questions, correct_answers, quiz_id")
+          .eq("user_id", userId);
 
-      // Calculate quiz statistics from real data
-      const totalQuizzesCompleted = quizAttempts?.length || 0;
-      
-      // Each quiz is worth exactly 1 point
-      const quizPoints = totalQuizzesCompleted;
+        if (quizError) throw quizError;
 
-      const averageScore = totalQuizzesCompleted > 0 
-        ? Math.round(quizAttempts!.reduce((sum, attempt) => sum + attempt.score, 0) / totalQuizzesCompleted)
-        : 0;
+        // Calculate quiz statistics from real data
+        const totalQuizzesCompleted = quizAttempts?.length || 0;
+        
+        // Each quiz is worth points based on performance
+        const quizPoints = quizAttempts?.reduce((sum, attempt) => {
+          let points = 1; // Base points
+          if (attempt.score >= 90) points = 3; // Excellent
+          else if (attempt.score >= 70) points = 2; // Good
+          return sum + points;
+        }, 0) || 0;
 
-      // Total points is now just quiz points (1 point per quiz)
-      const totalPoints = quizPoints;
+        const averageScore = totalQuizzesCompleted > 0 
+          ? Math.round(quizAttempts!.reduce((sum, attempt) => sum + attempt.score, 0) / totalQuizzesCompleted)
+          : 0;
 
-      setStats(prev => ({
-        ...prev,
-        quizPoints,
-        totalQuizzesCompleted,
-        averageQuizScore: averageScore,
-        totalPoints
-      }));
+        const highestScore = totalQuizzesCompleted > 0
+          ? Math.max(...quizAttempts!.map(a => a.score))
+          : 0;
 
-      // Check for new achievements based on quiz points (but only if we have a function)
-      // Note: This is handled by the QuizTaking component to avoid loops
-    } catch (error) {
-      console.error("Error fetching quiz stats:", error);
+        // Total points is quiz points (achievements handled separately)
+        const totalPoints = quizPoints;
+
+        setStats(prev => ({
+          ...prev,
+          quizPoints,
+          totalQuizzesCompleted,
+          averageQuizScore: averageScore,
+          highestQuizScore: highestScore,
+          totalPoints
+        }));
+      } else {
+        // Use data from user_points table
+        setStats(prev => ({
+          ...prev,
+          quizPoints: userPoints.quiz_points || 0,
+          totalPoints: userPoints.total_points || 0,
+          totalQuizzesCompleted: userPoints.quizzes_completed || 0,
+          averageQuizScore: userPoints.average_score || 0,
+          highestQuizScore: userPoints.highest_score || 0
+        }));
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch quiz stats:", error);
     }
   };
 
@@ -363,6 +420,7 @@ function Dashboard() {
         .update({
           name: profile.name,
           bio: profile.bio,
+          gender: profile.gender,
         })
         .eq("id", user.id);
 
@@ -372,6 +430,43 @@ function Dashboard() {
       toast.error(error.message || "Error updating profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordData.newPassword || !passwordData.confirmPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
+      });
+
+      if (error) throw error;
+
+      toast.success("Password updated successfully!");
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error: any) {
+      toast.error(error.message || "Error updating password");
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -673,9 +768,10 @@ function Dashboard() {
       await supabase.from("posts").delete().eq("author_id", userId);
       
       // Delete user's quiz attempts and answers
-      await supabase.from("user_quiz_answers").delete().eq("attempt_id", 
-        (await supabase.from("user_quiz_attempts").select("id").eq("user_id", userId)).data?.map(a => a.id) || []
-      );
+      const quizAttempts = (await supabase.from("user_quiz_attempts").select("id").eq("user_id", userId)).data?.map(a => a.id) || [];
+      if (quizAttempts.length > 0) {
+        await supabase.from("user_quiz_answers").delete().in("attempt_id", quizAttempts);
+      }
       await supabase.from("user_quiz_attempts").delete().eq("user_id", userId);
       
       // Delete user's achievements
@@ -765,42 +861,88 @@ function Dashboard() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">My Dashboard</h1>
-        <p className="text-muted-foreground">Manage your profile and saved content</p>
+    <div className="flex min-h-screen bg-background">
+      {/* Mobile Sidebar Toggle */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setSidebarOpen(true)}
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
-          <TabsTrigger value="profile">
-            <User className="h-4 w-4 mr-2" />
-            Profile
-          </TabsTrigger>
-          <TabsTrigger value="myposts">
-            <FileText className="h-4 w-4 mr-2" />
-            My Posts
-          </TabsTrigger>
-          <TabsTrigger value="quizhistory">
-            <Trophy className="h-4 w-4 mr-2" />
-            Quiz History
-          </TabsTrigger>
-          <TabsTrigger value="saved">
-            <BookmarkIcon className="h-4 w-4 mr-2" />
-            Saved
-          </TabsTrigger>
-          <TabsTrigger value="activity">
-            <Activity className="h-4 w-4 mr-2" />
-            Activity
-          </TabsTrigger>
-          <TabsTrigger value="settings">
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </TabsTrigger>
-        </TabsList>
+      {/* Mobile Sidebar - Sheet */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold">Dashboard</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <nav className="space-y-2">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    key={item.id}
+                    variant={activeSection === item.id ? "default" : "ghost"}
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setActiveSection(item.id);
+                      setSidebarOpen(false);
+                    }}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </nav>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-        {/* Profile Tab */}
-        <TabsContent value="profile" className="space-y-6">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block w-64 border-r bg-card">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold mb-6">Dashboard</h2>
+          <nav className="space-y-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Button
+                  key={item.id}
+                  variant={activeSection === item.id ? "default" : "ghost"}
+                  className="w-full justify-start"
+                  onClick={() => setActiveSection(item.id)}
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {item.label}
+                </Button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-6 lg:p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2">My Dashboard</h1>
+            <p className="text-muted-foreground">Manage your profile and saved content</p>
+          </div>
+
+          {/* Content based on active section */}
+          {activeSection === "profile" && (
           <Card>
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
@@ -907,10 +1049,9 @@ function Dashboard() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+          )}
 
-        {/* My Posts Tab */}
-        <TabsContent value="myposts" className="space-y-6">
+          {activeSection === "myposts" && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1001,6 +1142,7 @@ function Dashboard() {
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Enhanced Post Editor Dialog */}
           <Dialog open={showPostEditor} onOpenChange={setShowPostEditor}>
@@ -1014,76 +1156,47 @@ function Dashboard() {
                   <Input
                     id="title"
                     value={currentPost?.title || ""}
-                    onChange={(e) => {
-                      const title = e.target.value;
-                      setCurrentPost({ 
-                        ...currentPost, 
-                        title,
-                        slug: generateSlug(title)
-                      });
-                    }}
+                    onChange={(e) => setCurrentPost({ ...currentPost, title: e.target.value })}
                     className="col-span-3"
                     placeholder="Enter post title"
                   />
                 </div>
-                
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="slug" className="text-right">Slug</Label>
-                  <Input
-                    id="slug"
-                    value={currentPost?.slug || ""}
-                    onChange={(e) => setCurrentPost({ ...currentPost, slug: e.target.value })}
-                    className="col-span-3"
-                    placeholder="url-friendly-post-title"
-                  />
-                </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="excerpt" className="text-right">Excerpt</Label>
-                  <Textarea
+                  <Input
                     id="excerpt"
                     value={currentPost?.excerpt || ""}
                     onChange={(e) => setCurrentPost({ ...currentPost, excerpt: e.target.value })}
                     className="col-span-3"
-                    placeholder="Brief description of the post"
-                    rows={3}
+                    placeholder="Brief description"
                   />
                 </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="content" className="text-right">Content</Label>
+                  <Label htmlFor="content" className="text-right">Content *</Label>
                   <Textarea
                     id="content"
                     value={currentPost?.content || ""}
                     onChange={(e) => setCurrentPost({ ...currentPost, content: e.target.value })}
                     className="col-span-3"
-                    placeholder="Write your post content here (Markdown supported)"
                     rows={10}
+                    placeholder="Write your post content here..."
                   />
                 </div>
-
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="image" className="text-right">Featured Image</Label>
+                  <Label htmlFor="image" className="text-right">Image</Label>
                   <div className="col-span-3 space-y-2">
                     <Input
-                      id="image"
                       type="file"
                       accept="image/*"
                       onChange={handleImageUpload}
                       disabled={uploadingImage}
                     />
-                    {uploadingImage && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Uploading image...
-                      </div>
-                    )}
-                    {currentPost?.featured_image && (
+                    {currentPost?.image_url && (
                       <div className="mt-2">
-                        <img 
-                          src={currentPost.featured_image} 
-                          alt="Featured" 
-                          className="h-32 w-32 object-cover rounded-lg"
+                        <img
+                          src={currentPost.image_url}
+                          alt="Post preview"
+                          className="h-32 w-32 object-cover rounded"
                         />
                       </div>
                     )}
@@ -1092,17 +1205,30 @@ function Dashboard() {
               </div>
               <DialogFooter>
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={() => {
                     setShowPostEditor(false);
                     setCurrentPost(null);
-                    setImageFile(null);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSavePost} disabled={!currentPost?.title?.trim()}>
-                  {currentPost?.id ? "Update Post" : "Create Post"}
+                <Button
+                  type="button"
+                  onClick={handleSavePost}
+                  disabled={saving || !currentPost?.title?.trim() || !currentPost?.content?.trim()}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : currentPost?.id ? (
+                    "Update Post"
+                  ) : (
+                    "Create Post"
+                  )}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1218,10 +1344,8 @@ function Dashboard() {
               </div>
             </div>
           )}
-        </TabsContent>
 
-        {/* Quiz History Tab */}
-        <TabsContent value="quizhistory" className="space-y-6">
+          {activeSection === "quizhistory" && (
           <Card>
             <CardHeader>
               <CardTitle>Quiz History</CardTitle>
@@ -1288,136 +1412,181 @@ function Dashboard() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+          )}
+
+          {/* My Mezmurs Tab */}
+          {activeSection === "mezmurs" && (
+          <UserMezmurManager />
+          )}
+
+          {/* Achievements Tab */}
+          {activeSection === "achievements" && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>My Achievements</CardTitle>
+                <CardDescription>Track your progress and unlock rewards</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium">Achievement Progress</p>
+                    <p className="text-sm text-muted-foreground">
+                      {userAchievements.length} / {achievements.length} unlocked
+                    </p>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{
+                        width: `${achievements.length > 0 ? (userAchievements.length / achievements.length) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <AchievementDisplay
+                  achievements={achievements}
+                  userAchievements={userAchievements}
+                  loading={achievementsLoading}
+                />
+              </CardContent>
+            </Card>
+          </div>
+          )}
 
         {/* Saved Content Tab */}
-        <TabsContent value="saved" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Saved Mezmurs</CardTitle>
-              <CardDescription>{savedMezmurs.length} mezmurs saved</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {savedMezmurs.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No saved mezmurs yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {savedMezmurs.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Music className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="font-medium">{item.mezmurs.title}</p>
-                          <p className="text-sm text-muted-foreground">{item.mezmurs.artist}</p>
+        {activeSection === "saved" && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Saved Mezmurs</CardTitle>
+                <CardDescription>{savedMezmurs.length} mezmurs saved</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {savedMezmurs.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No saved mezmurs yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {savedMezmurs.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Music className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium">{item.mezmurs.title}</p>
+                            <p className="text-sm text-muted-foreground">{item.mezmurs.artist}</p>
+                          </div>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSaved("mezmurs", item.id)}
+                        >
+                          Remove
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSaved("mezmurs", item.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Saved Posts</CardTitle>
-              <CardDescription>{savedPosts.length} posts saved</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {savedPosts.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No saved posts yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {savedPosts.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-primary" />
-                        <p className="font-medium">{item.posts.title}</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Saved Posts</CardTitle>
+                <CardDescription>{savedPosts.length} posts saved</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {savedPosts.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No saved posts yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {savedPosts.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium">{item.posts.title}</p>
+                            <p className="text-sm text-muted-foreground">{item.posts.excerpt}</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSaved("posts", item.id)}
+                        >
+                          Remove
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSaved("posts", item.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Saved Announcements</CardTitle>
-              <CardDescription>{savedAnnouncements.length} announcements saved</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {savedAnnouncements.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No saved announcements yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {savedAnnouncements.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Bell className="h-5 w-5 text-primary" />
-                        <p className="font-medium">{item.announcements.title}</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Saved Announcements</CardTitle>
+                <CardDescription>{savedAnnouncements.length} announcements saved</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {savedAnnouncements.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No saved announcements yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {savedAnnouncements.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Bell className="h-5 w-5 text-primary" />
+                          <p className="font-medium">{item.announcements.title}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSaved("announcements", item.id)}
+                        >
+                          Remove
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSaved("announcements", item.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Saved Podcasts</CardTitle>
-              <CardDescription>{savedPodcasts.length} podcasts saved</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {savedPodcasts.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">No saved podcasts yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {savedPodcasts.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <PodcastIcon className="h-5 w-5 text-primary" />
-                        <p className="font-medium">{item.podcasts.title}</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Saved Podcasts</CardTitle>
+                <CardDescription>{savedPodcasts.length} podcasts saved</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {savedPodcasts.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No saved podcasts yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {savedPodcasts.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <PodcastIcon className="h-5 w-5 text-primary" />
+                          <p className="font-medium">{item.podcasts.title}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSaved("podcasts", item.id)}
+                        >
+                          Remove
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSaved("podcasts", item.id)}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          )}
 
-        {/* Activity Tab */}
-        <TabsContent value="activity">
+          {/* Activity Tab */}
+          {activeSection === "activity" && (
           <Card>
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
@@ -1443,95 +1612,177 @@ function Dashboard() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+          )}
 
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Settings</CardTitle>
-              <CardDescription>Update your profile information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  placeholder="Your name"
-                  value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  placeholder="Tell us about yourself"
-                  value={profile.bio}
-                  onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleUpdateProfile} disabled={saving}>
-                  {saving ? "Saving..." : "Save Changes"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Settings Tab */}
+          {activeSection === "settings" && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Information</CardTitle>
+                <CardDescription>View and manage your account details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="settings-email" className="text-sm font-medium">Email Address</Label>
+                    <Input
+                      id="settings-email"
+                      value={profile.email}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="settings-name">Full Name</Label>
+                    <Input
+                      id="settings-name"
+                      placeholder="Your name"
+                      value={profile.name}
+                      onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="settings-gender">Gender</Label>
+                  <Select
+                    value={profile.gender || ""}
+                    onValueChange={(value) => setProfile({ ...profile, gender: value })}
+                  >
+                    <SelectTrigger id="settings-gender">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="settings-bio">Bio</Label>
+                  <Textarea
+                    id="settings-bio"
+                    placeholder="Tell us about yourself"
+                    value={profile.bio}
+                    onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {profile.bio?.length || 0} / 500 characters
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <Button onClick={handleUpdateProfile} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Management</CardTitle>
-              <CardDescription>Manage your account data and privacy</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-lg font-medium mb-2">Export Your Data</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Download a copy of all your personal data including posts, quiz attempts, achievements, and profile information.
-                </p>
-                <Button variant="outline" onClick={handleExportData}>
-                  Export All Data
-                </Button>
-              </div>
-              
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-medium mb-2 text-red-600">Danger Zone</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Once you delete your account, there is no going back. Please be certain.
-                </p>
-                <Button variant="destructive" onClick={handleDeleteAccount}>
-                  Delete Account
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            <Card>
+              <CardHeader>
+                <CardTitle>Change Password</CardTitle>
+                <CardDescription>Update your account password for better security</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    placeholder="Enter new password (min. 6 characters)"
+                    value={passwordData.newPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, newPassword: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Re-enter new password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="pt-2">
+                  <Button
+                    onClick={handleChangePassword}
+                    disabled={changingPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+                    variant="default"
+                  >
+                    {changingPassword ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Updating Password...
+                      </>
+                    ) : (
+                      "Update Password"
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Profile Picture Cropper */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Management</CardTitle>
+                <CardDescription>Manage your account data and privacy</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Export Your Data</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Download a copy of all your personal data including posts, quiz attempts, achievements, and profile information.
+                  </p>
+                  <Button variant="outline" onClick={handleExportData}>
+                    Export All Data
+                  </Button>
+                </div>
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-medium mb-2 text-red-600">Danger Zone</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Once you delete your account, there is no going back. Please be certain.
+                  </p>
+                  <Button variant="destructive" onClick={handleDeleteAccount}>
+                    Delete Account
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+          {/* Recommendations Section */}
+          {user && (
+            <div className="mt-8">
+              <RecommendationSection userId={user.id} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Profile Picture Cropper Modal */}
       {showCropper && imageForCrop && (
         <ProfilePictureCropper
           imageSrc={imageForCrop}
           onCropComplete={handleCropComplete}
           onCancel={handleCropCancel}
         />
-      )}
-
-      {/* Achievement Display */}
-      <div className="mt-8">
-        <AchievementDisplay
-          achievements={achievements}
-          userAchievements={userAchievements}
-          loading={achievementsLoading}
-        />
-      </div>
-
-      {/* Recommendations Section */}
-      {user && (
-        <div className="mt-8">
-          <RecommendationSection userId={user.id} />
-        </div>
       )}
     </div>
   );

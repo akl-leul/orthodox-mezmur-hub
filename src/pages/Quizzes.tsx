@@ -70,6 +70,17 @@ const Quizzes = () => {
           const highScores = attempts.filter((a) => a.score >= 90).length;
           await checkAndAwardAchievement("quiz_high_score", highScores);
         }
+        
+        // Check for quiz points achievements
+        const { data: userPointsData } = await supabase
+          .from("user_points" as any)
+          .select("quiz_points")
+          .eq("user_id", session.user.id)
+          .single();
+        
+        if (userPointsData) {
+          await checkAndAwardAchievement("quiz_points", (userPointsData as any).quiz_points || 0);
+        }
       }
     } catch (error: any) {
       toast.error("Failed to load quizzes");

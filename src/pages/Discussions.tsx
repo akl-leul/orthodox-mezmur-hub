@@ -20,6 +20,9 @@ interface Discussion {
   content: string;
   created_at: string;
   user_id: string;
+  approved: boolean;
+  approved_by: string | null;
+  approved_at: string | null;
   profiles: { name: string; profile_pic: string | null } | null;
   discussion_likes: { id: string; user_id: string }[];
   discussion_comments: { id: string }[];
@@ -38,6 +41,7 @@ const Discussions = () => {
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [newDiscussion, setNewDiscussion] = useState("");
   const [posting, setPosting] = useState(false);
   const [expandedDiscussion, setExpandedDiscussion] = useState<string | null>(null);
@@ -46,14 +50,33 @@ const Discussions = () => {
   const [replyTo, setReplyTo] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session) {
+        // Check if user is admin
+        const { data: userRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .single();
+        setIsAdmin(userRole?.role === "admin");
+      }
     });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
+      if (session) {
+        const { data: userRole } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id)
+          .single();
+        setIsAdmin(userRole?.role === "admin");
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -113,7 +136,13 @@ const Discussions = () => {
         .from("discussions")
         .select(
           `
-          *,
+          id,
+          content,
+          created_at,
+          user_id,
+          approved,
+          approved_by,
+          approved_at,
           discussion_likes(id, user_id),
           discussion_comments(id)
         `
@@ -197,12 +226,31 @@ const Discussions = () => {
       });
 
       if (error) throw error;
-      toast.success("Posted!");
+      toast.success("Discussion posted! Pending admin approval.");
       setNewDiscussion("");
     } catch (error: any) {
       toast.error("Failed to post");
     } finally {
       setPosting(false);
+    }
+  };
+
+  const handleApproveDiscussion = async (discussionId: string) => {
+    if (!isAdmin) {
+      toast.error("Only admins can approve discussions");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.rpc("approve_discussion", {
+        discussion_id: discussionId,
+      });
+
+      if (error) throw error;
+      toast.success("Discussion approved!");
+      fetchDiscussions();
+    } catch (error: any) {
+      toast.error("Failed to approve discussion");
     }
   };
 
@@ -359,9 +407,16 @@ const Discussions = () => {
                         )}
                       </div>
                       <div>
-                        <p className="font-semibold">
-                          {discussion.profiles?.name || "Anonymous"}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold">
+                            {discussion.profiles?.name || "Anonymous"}
+                          </p>
+                          {!discussion.approved && (
+                            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">
+                              Pending Approval
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {formatDistanceToNow(new Date(discussion.created_at), {
                             addSuffix: true,
@@ -369,15 +424,26 @@ const Discussions = () => {
                         </p>
                       </div>
                     </div>
-                    {isOwner && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(discussion.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {isAdmin && !discussion.approved && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleApproveDiscussion(discussion.id)}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                      {isOwner && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(discussion.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

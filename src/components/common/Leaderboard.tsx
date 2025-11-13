@@ -19,7 +19,17 @@ interface LeaderboardEntry {
   };
 }
 
-const Leaderboard = () => {
+interface LeaderboardProps {
+  limit?: number;
+  showTitle?: boolean;
+  compact?: boolean;
+}
+
+const Leaderboard: React.FC<LeaderboardProps> = ({ 
+  limit = 10, 
+  showTitle = true, 
+  compact = false 
+}) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -94,7 +104,7 @@ const Leaderboard = () => {
 
         const sortedLeaderboard = Array.from(userStats.values())
           .sort((a, b) => b.total_points - a.total_points)
-          .slice(0, 50);
+          .slice(0, limit);
 
         console.log("Processed attempts leaderboard data:", sortedLeaderboard);
         setLeaderboard(sortedLeaderboard);
@@ -127,78 +137,83 @@ const Leaderboard = () => {
   };
 
   const getRankIcon = (index: number) => {
-    if (index === 0) return <Trophy className="h-6 w-6 text-yellow-500" />;
-    if (index === 1) return <Medal className="h-6 w-6 text-gray-400" />;
-    if (index === 2) return <Award className="h-6 w-6 text-amber-600" />;
-    return <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>;
+    if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
+    if (index === 1) return <Medal className="h-5 w-5 text-gray-400" />;
+    if (index === 2) return <Award className="h-5 w-5 text-amber-600" />;
+    return <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>;
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8 px-4">
-        <div className="text-center">Loading leaderboard...</div>
-      </div>
+      <Card className="shadow-elegant">
+        <CardContent className="pt-6">
+          <div className="text-center">Loading leaderboard...</div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 pb-24 md:pb-8 animate-fade-in">
-      <div className="flex items-center gap-3 mb-8">
-        <TrendingUp className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-4xl font-bold">Quiz Points Leaderboard</h1>
-          <p className="text-muted-foreground">Top performers ranked by total points (quiz points + achievement points)</p>
-        </div>
-      </div>
-
-      <Card className="shadow-elegant">
+    <Card className="shadow-elegant">
+      {showTitle && (
         <CardHeader>
-          <CardTitle>Top Performers</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Top Performers
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          {leaderboard.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No quiz attempts yet. Be the first!
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {leaderboard.map((entry, index) => (
-                <div
-                  key={entry.user_id}
-                  className={`flex items-center gap-4 p-4 rounded-lg transition-smooth hover:bg-muted ${
-                    index < 3 ? "bg-primary/5" : ""
-                  }`}
-                >
-                  <div className="w-12 flex justify-center">{getRankIcon(index)}</div>
-                  
-                  <Avatar className="h-12 w-12">
+      )}
+      <CardContent>
+        {leaderboard.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            No quiz attempts yet. Be the first!
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {leaderboard.map((entry, index) => (
+              <div
+                key={entry.user_id}
+                className={`flex items-center gap-3 p-3 rounded-lg transition-smooth hover:bg-muted ${
+                  index < 3 ? "bg-primary/5" : ""
+                }`}
+              >
+                <div className="w-8 flex justify-center">{getRankIcon(index)}</div>
+                
+                {!compact && (
+                  <Avatar className="h-8 w-8">
                     <AvatarImage src={entry.profile.profile_pic || undefined} />
-                    <AvatarFallback>{entry.profile.name[0]}</AvatarFallback>
+                    <AvatarFallback className="text-xs">{entry.profile.name[0]}</AvatarFallback>
                   </Avatar>
+                )}
 
-                  <div className="flex-1">
-                    <p className="font-semibold">{entry.profile.name}</p>
-                    <p className="text-sm text-muted-foreground">
+                <div className="flex-1 min-w-0">
+                  <p className={`font-semibold truncate ${compact ? 'text-sm' : ''}`}>
+                    {entry.profile.name}
+                  </p>
+                  {!compact && (
+                    <p className="text-xs text-muted-foreground">
                       {entry.quizzes_completed} quiz{entry.quizzes_completed !== 1 ? "es" : ""} completed
                     </p>
-                  </div>
-
-                  <div className="text-right">
-                    <Badge variant="default" className="mb-1">
-                      {entry.total_points} total points
-                    </Badge>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div>{entry.quiz_points} quiz points • {entry.achievement_points} achievement points</div>
-                      <div>{Math.round(entry.average_score)}% avg • {entry.highest_score}% highest • {entry.quizzes_completed} quiz{entry.quizzes_completed !== 1 ? "zes" : ""}</div>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+
+                <div className="text-right">
+                  <Badge variant="default" className={`${compact ? 'text-xs' : ''} mb-1`}>
+                    {entry.total_points} pts
+                  </Badge>
+                  {!compact && (
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div>{entry.quiz_points} quiz • {entry.achievement_points} ach.</div>
+                      <div>{Math.round(entry.average_score)}% avg • {entry.highest_score}% highest</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

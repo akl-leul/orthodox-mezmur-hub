@@ -143,7 +143,7 @@ const Layout = () => {
             {/* Adjusted margin for logo */}
             <Music className="h-6 w-6 text-primary" />
             <span className="gradient-primary bg-clip-text text-transparent">
-              Orthodox Mezmur Hub
+              OrthoMez
             </span>
           </Link>
 
@@ -158,7 +158,7 @@ const Layout = () => {
             <SheetContent side="left" className="flex flex-col">
               <SheetHeader>
                 <SheetTitle>Navigation</SheetTitle>
-                <SheetDescription>Explore Orthodox Mezmur Hub</SheetDescription>
+                <SheetDescription>Explore OrthoMez</SheetDescription>
               </SheetHeader>
               <nav className="flex flex-col gap-2 py-4">
                 {navItems.map((item) => {
@@ -243,7 +243,7 @@ const Layout = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
-              <h3 className="font-bold text-lg mb-4">Orthodox Mezmur Hub</h3>
+              <h3 className="font-bold text-lg mb-4">OrthoMez</h3>
               <p className="text-sm text-muted-foreground">
                 Your source for Orthodox Christian spiritual music and
                 teachings.
@@ -275,7 +275,7 @@ const Layout = () => {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Orthodox Mezmur Hub. All rights
+            © {new Date().getFullYear()} OrthoMez. All rights
             reserved.
           </div>
         </div>
