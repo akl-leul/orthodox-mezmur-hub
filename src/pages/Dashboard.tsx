@@ -155,6 +155,7 @@ function Dashboard() {
         name: data.name || "",
         email: data.email || "",
         bio: data.bio || "",
+        gender: "",
       });
 
       if (data.profile_pic) {

@@ -20,9 +20,6 @@ interface Discussion {
   content: string;
   created_at: string;
   user_id: string;
-  approved: boolean;
-  approved_by: string | null;
-  approved_at: string | null;
   profiles: { name: string; profile_pic: string | null } | null;
   discussion_likes: { id: string; user_id: string }[];
   discussion_comments: { id: string }[];
@@ -53,7 +50,6 @@ const Discussions = () => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       if (session) {
-        // Check if user is admin
         const { data: userRole } = await supabase
           .from("user_roles")
           .select("role")
@@ -85,38 +81,21 @@ const Discussions = () => {
   useEffect(() => {
     fetchDiscussions();
 
-    // Real-time subscription
     const channel = supabase
       .channel("discussions-changes")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "discussions",
-        },
-        () => {
-          fetchDiscussions();
-        }
+        { event: "*", schema: "public", table: "discussions" },
+        () => fetchDiscussions()
       )
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "discussion_likes",
-        },
-        () => {
-          fetchDiscussions();
-        }
+        { event: "*", schema: "public", table: "discussion_likes" },
+        () => fetchDiscussions()
       )
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "discussion_comments",
-        },
+        { event: "*", schema: "public", table: "discussion_comments" },
         (payload) => {
           if (payload.new && (payload.new as any).discussion_id) {
             fetchComments((payload.new as any).discussion_id);
@@ -134,24 +113,18 @@ const Discussions = () => {
     try {
       const { data, error } = await supabase
         .from("discussions")
-        .select(
-          `
+        .select(`
           id,
           content,
           created_at,
           user_id,
-          approved,
-          approved_by,
-          approved_at,
           discussion_likes(id, user_id),
           discussion_comments(id)
-        `
-        )
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Fetch profile data separately
       const discussions = data || [];
       const userIds = [...new Set(discussions.map(d => d.user_id))];
       
@@ -185,7 +158,6 @@ const Discussions = () => {
 
       if (error) throw error;
 
-      // Fetch profile data separately
       const commentsData = data || [];
       const userIds = [...new Set(commentsData.map(c => c.user_id))];
       
@@ -226,31 +198,12 @@ const Discussions = () => {
       });
 
       if (error) throw error;
-      toast.success("Discussion posted! Pending admin approval.");
+      toast.success("Discussion posted!");
       setNewDiscussion("");
     } catch (error: any) {
       toast.error("Failed to post");
     } finally {
       setPosting(false);
-    }
-  };
-
-  const handleApproveDiscussion = async (discussionId: string) => {
-    if (!isAdmin) {
-      toast.error("Only admins can approve discussions");
-      return;
-    }
-
-    try {
-      const { error } = await supabase.rpc("approve_discussion", {
-        discussion_id: discussionId,
-      });
-
-      if (error) throw error;
-      toast.success("Discussion approved!");
-      fetchDiscussions();
-    } catch (error: any) {
-      toast.error("Failed to approve discussion");
     }
   };
 
@@ -407,16 +360,9 @@ const Discussions = () => {
                         )}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold">
-                            {discussion.profiles?.name || "Anonymous"}
-                          </p>
-                          {!discussion.approved && (
-                            <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full">
-                              Pending Approval
-                            </span>
-                          )}
-                        </div>
+                        <p className="font-semibold">
+                          {discussion.profiles?.name || "Anonymous"}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           {formatDistanceToNow(new Date(discussion.created_at), {
                             addSuffix: true,
@@ -425,16 +371,7 @@ const Discussions = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isAdmin && !discussion.approved && (
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleApproveDiscussion(discussion.id)}
-                        >
-                          Approve
-                        </Button>
-                      )}
-                      {isOwner && (
+                      {(isOwner || isAdmin) && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -498,37 +435,27 @@ const Discussions = () => {
                         </div>
                       )}
 
-                      {comments[discussion.id]?.map((comment) => (
-                        <div
-                          key={comment.id}
-                          className="bg-muted/50 rounded-lg p-3"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                              {comment.profiles?.profile_pic ? (
-                                <img
-                                  src={comment.profiles.profile_pic}
-                                  alt={comment.profiles.name}
-                                  className="h-full w-full object-cover rounded-full"
-                                />
-                              ) : (
-                                <MessageCircle className="h-3 w-3 text-primary" />
-                              )}
+                      {comments[discussion.id]?.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No comments yet</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {comments[discussion.id]?.map((comment) => (
+                            <div key={comment.id} className="bg-muted/50 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm">
+                                  {comment.profiles?.name || "Anonymous"}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(comment.created_at), {
+                                    addSuffix: true,
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-sm">{comment.content}</p>
                             </div>
-                            <div>
-                              <p className="text-sm font-semibold">
-                                {comment.profiles?.name || "Anonymous"}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {formatDistanceToNow(new Date(comment.created_at), {
-                                  addSuffix: true,
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="text-sm">{comment.content}</p>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </CardContent>
