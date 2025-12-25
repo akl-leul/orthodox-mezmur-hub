@@ -35,101 +35,103 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
 
   useEffect(() => {
     fetchLeaderboard();
-  }, []);
+  }, [limit]);
 
   const fetchLeaderboard = async () => {
     try {
-      console.log("Fetching leaderboard data...");
-      
-      // Use direct query with any type to bypass TypeScript restrictions
-      const { data: leaderboardData, error } = await supabase
-        .rpc('get_leaderboard_data') as any;
+      // Fetch quiz attempts with profiles
+      const { data: attempts, error: attemptsError } = await supabase
+        .from("user_quiz_attempts")
+        .select(`user_id, score, quiz_id`);
 
-      console.log("Leaderboard query result:", { data: leaderboardData, error });
-
-      if (error) {
-        console.error("Error fetching leaderboard:", error);
-        
-        // Fallback: Try to get quiz attempts and aggregate manually
-        console.log("Trying fallback with quiz attempts...");
-        const { data: attempts, error: attemptsError } = await supabase
-          .from("user_quiz_attempts")
-          .select(`
-            user_id,
-            score,
-            quiz_id,
-            profiles!inner(name, profile_pic)
-          `);
-
-        console.log("Attempts fallback result:", { data: attempts, error: attemptsError });
-
-        if (attemptsError) {
-          throw attemptsError;
-        }
-
-        // Aggregate data by user from attempts
-        const userStats = new Map<string, LeaderboardEntry>();
-        
-        attempts?.forEach((attempt: any) => {
-          const userId = attempt.user_id;
-          const existing = userStats.get(userId);
-          
-          // Calculate points based on performance
-          let attemptPoints = 1; // Base points for completing
-          if (attempt.score >= 90) attemptPoints = 3; // Excellent
-          else if (attempt.score >= 70) attemptPoints = 2; // Good
-          
-          if (existing) {
-            existing.total_points += attemptPoints;
-            existing.quiz_points += attemptPoints;
-            existing.quizzes_completed += 1;
-            existing.average_score = (existing.average_score * (existing.quizzes_completed - 1) + attempt.score) / existing.quizzes_completed;
-            existing.highest_score = Math.max(existing.highest_score, attempt.score);
-          } else {
-            userStats.set(userId, {
-              user_id: userId,
-              total_points: attemptPoints,
-              quiz_points: attemptPoints,
-              achievement_points: 0,
-              quizzes_completed: 1,
-              average_score: attempt.score,
-              highest_score: attempt.score,
-              profile: {
-                name: attempt.profiles.name,
-                profile_pic: attempt.profiles.profile_pic,
-              },
-            });
-          }
-        });
-
-        const sortedLeaderboard = Array.from(userStats.values())
-          .sort((a, b) => b.total_points - a.total_points)
-          .slice(0, limit);
-
-        console.log("Processed attempts leaderboard data:", sortedLeaderboard);
-        setLeaderboard(sortedLeaderboard);
-      } else {
-        // Transform the data from the function
-        const transformedData: LeaderboardEntry[] = leaderboardData?.map((item: any) => ({
-          user_id: item.user_id,
-          total_points: item.total_points || 0,
-          quiz_points: item.quiz_points || 0,
-          achievement_points: item.achievement_points || 0,
-          quizzes_completed: item.quizzes_completed || 0,
-          average_score: item.average_score || 0,
-          highest_score: item.highest_score || 0,
-          profile: {
-            name: item.user_name || 'Unknown User',
-            profile_pic: item.user_profile_pic,
-          },
-        })) || [];
-
-        console.log("Processed leaderboard data:", transformedData);
-        setLeaderboard(transformedData);
+      if (attemptsError) {
+        console.error("Error fetching attempts:", attemptsError);
+        setLeaderboard([]);
+        setLoading(false);
+        return;
       }
+
+      // Get unique user IDs
+      const userIds = [...new Set(attempts?.map(a => a.user_id) || [])];
+      
+      if (userIds.length === 0) {
+        setLeaderboard([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch profiles for those users
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, name, profile_pic")
+        .in("id", userIds);
+
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+      }
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Fetch achievements for users
+      const { data: userAchievements } = await supabase
+        .from("user_achievements")
+        .select("user_id, achievements(points)")
+        .in("user_id", userIds);
+
+      // Calculate achievement points per user
+      const achievementPointsMap = new Map<string, number>();
+      userAchievements?.forEach((ua: any) => {
+        const points = ua.achievements?.points || 0;
+        achievementPointsMap.set(
+          ua.user_id,
+          (achievementPointsMap.get(ua.user_id) || 0) + points
+        );
+      });
+
+      // Aggregate data by user
+      const userStats = new Map<string, LeaderboardEntry>();
+      
+      attempts?.forEach((attempt) => {
+        const userId = attempt.user_id;
+        const existing = userStats.get(userId);
+        const profile = profileMap.get(userId);
+        
+        // Calculate points based on performance
+        let attemptPoints = 1;
+        if (attempt.score >= 90) attemptPoints = 3;
+        else if (attempt.score >= 70) attemptPoints = 2;
+        
+        if (existing) {
+          existing.quiz_points += attemptPoints;
+          existing.quizzes_completed += 1;
+          existing.average_score = (existing.average_score * (existing.quizzes_completed - 1) + attempt.score) / existing.quizzes_completed;
+          existing.highest_score = Math.max(existing.highest_score, attempt.score);
+          existing.total_points = existing.quiz_points + existing.achievement_points;
+        } else {
+          const achievementPoints = achievementPointsMap.get(userId) || 0;
+          userStats.set(userId, {
+            user_id: userId,
+            total_points: attemptPoints + achievementPoints,
+            quiz_points: attemptPoints,
+            achievement_points: achievementPoints,
+            quizzes_completed: 1,
+            average_score: attempt.score,
+            highest_score: attempt.score,
+            profile: {
+              name: profile?.name || 'Unknown User',
+              profile_pic: profile?.profile_pic || null,
+            },
+          });
+        }
+      });
+
+      const sortedLeaderboard = Array.from(userStats.values())
+        .sort((a, b) => b.total_points - a.total_points)
+        .slice(0, limit);
+
+      setLeaderboard(sortedLeaderboard);
     } catch (error) {
       console.error("Failed to fetch leaderboard:", error);
-      // Set empty array to prevent infinite loading
       setLeaderboard([]);
     } finally {
       setLoading(false);

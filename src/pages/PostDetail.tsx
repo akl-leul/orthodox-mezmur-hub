@@ -29,14 +29,14 @@ interface Post {
   author_id: string;
   created_at: string;
   profiles: { name: string; profile_pic: string | null } | null;
-  likes: { id: string }[];
+  likes: { id: string; user_id: string }[];
   comments: { id: string }[];
 }
 
 interface Comment {
   id: string;
   content: string;
-  approved: boolean;
+  approved: boolean | null;
   created_at: string;
   user_id: string;
   profiles: { name: string; profile_pic: string | null } | null;
@@ -76,23 +76,16 @@ const PostDetail = () => {
     try {
       const { data, error } = await supabase
         .from("posts")
-        .select(
-          `
+        .select(`
           *,
           profiles(name, profile_pic),
           likes(id, user_id),
-          comments(id, content, approved, created_at, user_id, profiles(name, profile_pic))
-        `,
-        )
+          comments(id)
+        `)
         .eq("slug", slug)
         .single();
 
       if (error) throw error;
-
-      // Filter comments to only show approved ones
-      if (data.comments) {
-        data.comments = data.comments.filter((comment: any) => comment.approved && !comment.suspended);
-      }
 
       setPost(data);
       fetchComments(data.id);
@@ -112,7 +105,6 @@ const PostDetail = () => {
         .select(`*, profiles(name, profile_pic)`)
         .eq("post_id", postId)
         .eq("approved", true)
-        .eq("suspended", false)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -130,7 +122,6 @@ const PostDetail = () => {
       return;
     }
 
-    // Check if current user has liked this post
     const hasLiked = post.likes.some((like: any) => like.user_id === session.user.id);
 
     try {
@@ -167,8 +158,7 @@ const PostDetail = () => {
         post_id: post.id,
         user_id: session.user.id,
         content: newComment.trim(),
-        approved: false, // Comments require approval by default
-        suspended: false
+        approved: false,
       });
 
       if (error) throw error;
@@ -222,7 +212,6 @@ const PostDetail = () => {
     return null;
   }
 
-  // Check if current user has liked this post
   const hasLiked = session && post?.likes.some((like: any) => like.user_id === session.user.id);
   const isAuthor = session?.user.id === post.author_id;
 
